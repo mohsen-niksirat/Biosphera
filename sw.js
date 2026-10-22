@@ -12,6 +12,7 @@ const ASSETS_TO_CACHE = [
   './src/audio/SoundEngine.js',
   './src/brain/NeuralNet.js',
   './src/engine/Achievements.js',
+  './src/engine/DayNightCycle.js',
   './src/engine/SpatialHash.js',
   './src/engine/World.js',
   './src/entities/Food.js',

@@ -18,6 +18,8 @@ Unlike traditional rule-based cellular automata or particle visualizers, each or
 
 ## ✨ Key Features
 
+- **🌙 Circadian Day/Night & Bioluminescent Deep:** Smooth diurnal transitions through daylight, twilight, and deep night. At night, photosynthesis pauses while organisms and vegetation emanate glowing bioluminescent neon halos and trails!
+- **👁️ Multi-Spectrum Vision Overlays:** Switch view modes between *Natural View*, *Sensory Mesh* (visualizes the collective neural perception field and target locks of all organisms simultaneously), and *Kinetic Heatmap* (radiant thermal trails proportional to speed and hunting energy).
 - **⚔️ Gladiator Arena & Fitness Benchmark:** Put any specimen through a rigorous 3-phase standardized coliseum trial (Foraging speed, Hazard navigation, and Hunter drone evasion) to evaluate its adaptive fitness score (0–100) and award an official Specimen Fitness Certificate (Tier S+, A, B, C, D).
 - **🎨 Interactive God Brush & Shockwave Ripples:** Direct tactile interaction with the living water — switch brushes to sow plant colonies, drop nutrient meat, plant toxic vents, or trigger physical water shockwaves that push organisms and food away!
 - **🔬 Genetic Engineering Laboratory (Gene Lab):** Design custom organisms with real-time swimming preview, interactive trait sliders (size, speed, vision cone, diet niche, hue), and estimated basal/kinetic burn rates before releasing them into the wild.

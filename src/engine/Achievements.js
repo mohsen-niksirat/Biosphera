@@ -92,6 +92,13 @@ export class AchievementsEngine {
         title: 'Coliseum Victor',
         description: 'Attain Tier A or Tier S+ in the Gladiator Fitness trial.',
         unlocked: false
+      },
+      {
+        id: 'nocturnal_hunter',
+        icon: '🌌',
+        title: 'Nocturnal Hunter',
+        description: 'Witness an apex predator hunting in deep bioluminescent night.',
+        unlocked: false
       }
     ];
 

@@ -1,6 +1,6 @@
 /**
  * Biosphera - Main Application Entrypoint
- * Orchestrates simulation, WebAudio, population dynamics, Gene Lab, God Brush, and Gladiator Trials.
+ * Orchestrates simulation, WebAudio, population dynamics, Gene Lab, God Brush, Day/Night Cycle, and Gladiator Trials.
  */
 
 import { World } from './engine/World.js';
@@ -14,6 +14,7 @@ import { AchievementsEngine } from './engine/Achievements.js';
 import { GeneLab } from './ui/GeneLab.js';
 import { GodBrush } from './ui/GodBrush.js';
 import { ArenaTrial } from './engine/ArenaTrial.js';
+import { DayNightCycle } from './engine/DayNightCycle.js';
 
 class BiospheraApp {
   constructor() {
@@ -24,6 +25,7 @@ class BiospheraApp {
     this.soundEngine = new SoundEngine();
     this.chart = new PopulationChart('chart-canvas', 160);
     this.achievements = new AchievementsEngine();
+    this.dayNight = new DayNightCycle(85);
 
     // 2. World & Camera
     this.world = new World(2400, 1800);
@@ -75,6 +77,9 @@ class BiospheraApp {
           break;
         case 'attack':
           this.soundEngine.playAttack();
+          if (this.dayNight.getPhase() === 'night') {
+            this.achievements.unlock('nocturnal_hunter');
+          }
           break;
         case 'disaster':
           this.soundEngine.playDisaster();
@@ -125,7 +130,6 @@ class BiospheraApp {
       const mouseX = (e.clientX - rect.left) * (this.canvas.width / rect.width);
       const mouseY = (e.clientY - rect.top) * (this.canvas.height / rect.height);
 
-      // Check if GodBrush handles the click (sowing, shockwave, meat drop)
       if (this.godBrush.handleMouseDown(mouseX, mouseY)) {
         return;
       }
@@ -205,6 +209,24 @@ class BiospheraApp {
         target.classList.add('active');
         this.godBrush.setMode(target.dataset.brush);
       });
+    });
+
+    // View Mode selector
+    document.getElementById('select-view-mode')?.addEventListener('change', (e) => {
+      this.renderer.viewMode = e.target.value;
+      this.controls.showToast(`👁️ View Mode: ${e.target.options[e.target.selectedIndex].text}`);
+    });
+
+    // Day / Night cycle toggle
+    const btnDayNight = document.getElementById('btn-day-night');
+    btnDayNight?.addEventListener('click', () => {
+      const current = this.dayNight.getPhase();
+      const next = current === 'night' ? 'day' : 'night';
+      const locked = this.dayNight.toggleLock(next);
+      if (btnDayNight) {
+        btnDayNight.innerText = locked === 'night' ? '🌙 Night' : (locked === 'day' ? '☀️ Day' : '🔄 Auto');
+      }
+      this.controls.showToast(locked === 'night' ? '🌌 Switched to Bioluminescent Night' : '☀️ Switched to Diurnal Light');
     });
 
     // Camera follow
@@ -326,15 +348,25 @@ class BiospheraApp {
     // Record population history in chart
     this.chart.record(stats, currentTime);
 
-    // 1. Simulation Step
+    // 1. Simulation Step & Circadian Cycle
     this.world.update(dt);
     this.godBrush.update(dt);
+    this.dayNight.update(dt);
+
+    // Update Day/Night HUD text if in auto mode
+    if (!this.dayNight.isLocked) {
+      const phase = this.dayNight.getPhase();
+      const btn = document.getElementById('btn-day-night');
+      if (btn) {
+        btn.innerText = phase === 'night' ? '🌙 Night' : (phase === 'dusk' ? '🌆 Dusk' : (phase === 'dawn' ? '🌅 Dawn' : '☀️ Day'));
+      }
+    }
 
     // 2. Camera tracking
     this.camera.update(this.canvas.width, this.canvas.height);
 
-    // 3. Render Viewport with GodBrush ripples
-    this.renderer.render(this.world, this.godBrush);
+    // 3. Render Viewport with GodBrush ripples & Day/Night lighting
+    this.renderer.render(this.world, this.godBrush, this.dayNight);
 
     // 4. Update Microscope Inspector
     this.inspector.update();
