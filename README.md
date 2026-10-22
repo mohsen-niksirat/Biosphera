@@ -18,6 +18,8 @@ Unlike traditional rule-based cellular automata or particle visualizers, each or
 
 ## ✨ Key Features
 
+- **🌳 Phylogenetic Tree & Species Cladogram:** Interactive evolutionary tree mapping all active species lineages and generational branching. Click any node to teleport camera to that family line.
+- **📸 High-Res Snapshot & Social Poster Exporter:** Captures the current canvas frame with clean metadata badges (Generation, Population, Scenario, Repo link) and downloads as high-res PNG.
 - **🌙 Circadian Day/Night & Bioluminescent Deep:** Smooth diurnal transitions through daylight, twilight, and deep night. At night, photosynthesis pauses while organisms and vegetation emanate glowing bioluminescent neon halos and trails!
 - **👁️ Multi-Spectrum Vision Overlays:** Switch view modes between *Natural View*, *Sensory Mesh* (visualizes the collective neural perception field and target locks of all organisms simultaneously), and *Kinetic Heatmap* (radiant thermal trails proportional to speed and hunting energy).
 - **⚔️ Gladiator Arena & Fitness Benchmark:** Put any specimen through a rigorous 3-phase standardized coliseum trial (Foraging speed, Hazard navigation, and Hunter drone evasion) to evaluate its adaptive fitness score (0–100) and award an official Specimen Fitness Certificate (Tier S+, A, B, C, D).
@@ -99,18 +101,25 @@ Because Biosphera is built with pure modern ES modules, you don't even need to r
 
 ---
 
-## 🎮 Controls
+## 🎮 Controls & Hotkeys
 
-| Action | Control |
+| Action | Control / Shortcut |
 | :--- | :--- |
-| **Pan Biome** | Click and drag on canvas |
+| **Pan Biome** | Click & drag on canvas |
 | **Zoom Viewport** | Mouse scroll wheel |
 | **Inspect Organism** | Click on any swimming organism |
 | **Follow Target** | Click "🎯 Follow" inside the Microscope panel |
-| **Simulation Speed** | Toggle `1x`, `2x`, `5x`, or `10x` in the bottom bar |
-| **Pause / Resume** | Click `⏸ Pause` button |
-| **Sound** | Toggle sound on/off with the `🔊 Sound` button in the top bar |
-| **Ecology Chart** | Toggle the Lotka-Volterra graph with the `📈 Dynamics` button |
+| **Pause / Resume** | `Space` or `⏸ Pause` button |
+| **Simulation Speed** | Keys `1` to `4` (1x, 2x, 5x, 10x) |
+| **Toggle Sound** | Key `M` or `🔊 Sound` button |
+| **Toggle Day / Night** | Key `N` or `☀️ Day` button |
+| **Cycle View Mode** | Key `V` (Natural ⟷ Sensory Mesh ⟷ Heatmap) |
+| **Ecology Chart** | Key `C` or `📈 Dynamics` button |
+| **Gene Lab** | Key `L` or `🔬 Gene Lab` button |
+| **Achievements** | Key `T` or `🏆 Trophies` button |
+| **Capture Snapshot** | Key `P` or `📸` button |
+| **Fullscreen** | Key `F` or `⛶` button |
+| **Help & Guide** | Key `H` or `❓` button |
 
 ---
 

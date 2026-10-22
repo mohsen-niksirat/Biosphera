@@ -66,6 +66,9 @@
         <button id="btn-sound" class="btn btn-secondary btn-sm" title="Toggle procedural soundscape">🔇 Sound: Off</button>
         <button id="btn-toggle-chart" class="btn btn-secondary btn-sm" title="Toggle Lotka-Volterra ecology chart">📈 Dynamics</button>
         <button id="btn-import-dna" class="btn btn-secondary btn-sm" title="Import DNA string">📥 DNA</button>
+        <button id="btn-lineage" class="btn btn-secondary btn-sm" title="View phylogenetic tree">🌳 Lineage</button>
+        <button id="btn-snapshot" class="btn btn-secondary btn-sm" title="Capture PNG snapshot">📸</button>
+        <button id="btn-help" class="btn btn-secondary btn-sm" title="Science guide & hotkeys">❓</button>
         <button id="btn-fullscreen" class="btn btn-secondary btn-sm" title="Toggle Fullscreen">⛶</button>
       </div>
     </header>
@@ -233,6 +236,59 @@
         </div>
         <div class="modal-body">
           <div id="trophies-list" class="trophies-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phylogenetic Lineage Tree Modal -->
+    <div id="lineage-modal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+          <h3>🌳 Phylogenetic Lineage & Species Cladogram</h3>
+          <button id="btn-close-lineage" class="btn-icon">&times;</button>
+        </div>
+        <div class="modal-body lineage-body">
+          <p class="modal-desc">Visualizes species branching across generations. Click any node to focus on that living lineage.</p>
+          <div class="cladogram-container">
+            <canvas id="cladogram-canvas" width="600" height="340"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scientific Guide & Hotkeys Modal -->
+    <div id="guide-modal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+          <h3>📖 Biosphera Scientific Guide & Hotkeys</h3>
+          <button id="btn-close-guide" class="btn-icon">&times;</button>
+        </div>
+        <div class="modal-body guide-body">
+          <div class="guide-grid">
+            <div class="guide-section">
+              <h4>🧬 Neural Brain & Genetics</h4>
+              <p>Each organism processes sensory stimuli through a feedforward network. Offspring inherit mutated synaptic weights with an 8% mutation rate.</p>
+              <h4>🍃 Emergent Natural Selection</h4>
+              <p>Complex behaviors (flocking, evasion, ambush hunting) are not hardcoded; they emerge spontaneously as survival pressures weed out inefficient traits.</p>
+              <h4>📈 Lotka-Volterra Cycles</h4>
+              <p>Predators consume herbivores; as prey dwindles, predators starve; as predator counts drop, herbivores rebound.</p>
+            </div>
+            <div class="guide-section">
+              <h4>⌨️ Keyboard Shortcuts</h4>
+              <ul class="hotkeys-list">
+                <li><kbd>Space</kbd> <span>Pause / Resume</span></li>
+                <li><kbd>1</kbd> - <kbd>4</kbd> <span>Speed (1x, 2x, 5x, 10x)</span></li>
+                <li><kbd>M</kbd> <span>Toggle WebAudio Sound</span></li>
+                <li><kbd>N</kbd> <span>Toggle Day / Night</span></li>
+                <li><kbd>V</kbd> <span>Cycle View Modes</span></li>
+                <li><kbd>C</kbd> <span>Toggle Ecology Chart</span></li>
+                <li><kbd>L</kbd> <span>Open Gene Lab</span></li>
+                <li><kbd>T</kbd> <span>Open Trophies</span></li>
+                <li><kbd>P</kbd> <span>Capture Snapshot</span></li>
+                <li><kbd>F</kbd> <span>Toggle Fullscreen</span></li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
     </div>

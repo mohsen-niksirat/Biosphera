@@ -25,8 +25,10 @@ const ASSETS_TO_CACHE = [
   './src/ui/GeneLab.js',
   './src/ui/GodBrush.js',
   './src/engine/ArenaTrial.js',
+  './src/engine/Cladogram.js',
   './src/ui/Inspector.js',
-  './src/ui/PopulationChart.js'
+  './src/ui/PopulationChart.js',
+  './src/ui/Snapshot.js'
 ];
 
 self.addEventListener('install', (e) => {

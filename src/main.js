@@ -1,6 +1,7 @@
 /**
  * Biosphera - Main Application Entrypoint
- * Orchestrates simulation, WebAudio, population dynamics, Gene Lab, God Brush, Day/Night Cycle, and Gladiator Trials.
+ * Orchestrates simulation, WebAudio, population dynamics, Gene Lab, God Brush, Day/Night Cycle, Gladiator Trials,
+ * Phylogenetic Cladogram, and Social Snapshot Exporter.
  */
 
 import { World } from './engine/World.js';
@@ -15,6 +16,8 @@ import { GeneLab } from './ui/GeneLab.js';
 import { GodBrush } from './ui/GodBrush.js';
 import { ArenaTrial } from './engine/ArenaTrial.js';
 import { DayNightCycle } from './engine/DayNightCycle.js';
+import { Cladogram } from './engine/Cladogram.js';
+import { SnapshotExporter } from './ui/Snapshot.js';
 
 class BiospheraApp {
   constructor() {
@@ -59,14 +62,22 @@ class BiospheraApp {
       }
     });
 
-    // 7. Hook Achievements Unlocked
+    // 7. Phylogenetic Cladogram
+    this.cladogram = new Cladogram('cladogram-canvas', (targetOrg) => {
+      this.camera.follow(targetOrg);
+      this.renderer.selectedOrganism = targetOrg;
+      this.inspector.inspect(targetOrg);
+      this.controls.showToast('🎯 Focused on living lineage');
+    });
+
+    // 8. Hook Achievements Unlocked
     this.achievements.onUnlock = (trophy) => {
       this.soundEngine.playBirth();
       this.controls.showToast(`🏆 Milestone Unlocked: ${trophy.icon} ${trophy.title}`);
       this.updateTrophyBadge();
     };
 
-    // 8. Hook world sound events
+    // 9. Hook world sound events
     this.world.onEvent = (evt) => {
       switch (evt) {
         case 'birth':
@@ -102,6 +113,7 @@ class BiospheraApp {
     this.resizeCanvas();
     this.setupEventListeners();
     this.setupUIBindings();
+    this.setupHotkeys();
     this.setupPWA();
     this.updateTrophyBadge();
 
@@ -297,6 +309,94 @@ class BiospheraApp {
     document.getElementById('btn-close-trophies')?.addEventListener('click', () => {
       const modal = document.getElementById('trophies-modal');
       if (modal) modal.style.display = 'none';
+    });
+
+    // Cladogram Lineage modal
+    document.getElementById('btn-lineage')?.addEventListener('click', () => {
+      const modal = document.getElementById('lineage-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        this.cladogram.rebuildTree(this.world);
+      }
+    });
+
+    document.getElementById('btn-close-lineage')?.addEventListener('click', () => {
+      const modal = document.getElementById('lineage-modal');
+      if (modal) modal.style.display = 'none';
+    });
+
+    // Snapshot Exporter
+    document.getElementById('btn-snapshot')?.addEventListener('click', () => {
+      SnapshotExporter.capture(this.canvas, this.world, (msg) => this.controls.showToast(msg));
+    });
+
+    // Scientific Guide modal
+    document.getElementById('btn-help')?.addEventListener('click', () => {
+      const modal = document.getElementById('guide-modal');
+      if (modal) modal.style.display = 'flex';
+    });
+
+    document.getElementById('btn-close-guide')?.addEventListener('click', () => {
+      const modal = document.getElementById('guide-modal');
+      if (modal) modal.style.display = 'none';
+    });
+  }
+
+  setupHotkeys() {
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          document.getElementById('btn-play-pause')?.click();
+          break;
+        case 'Digit1':
+          document.querySelector('.btn-speed[data-speed="1"]')?.click();
+          break;
+        case 'Digit2':
+          document.querySelector('.btn-speed[data-speed="2"]')?.click();
+          break;
+        case 'Digit3':
+          document.querySelector('.btn-speed[data-speed="5"]')?.click();
+          break;
+        case 'Digit4':
+          document.querySelector('.btn-speed[data-speed="10"]')?.click();
+          break;
+        case 'KeyM':
+          document.getElementById('btn-sound')?.click();
+          break;
+        case 'KeyN':
+          document.getElementById('btn-day-night')?.click();
+          break;
+        case 'KeyV': {
+          const select = document.getElementById('select-view-mode');
+          if (select) {
+            select.selectedIndex = (select.selectedIndex + 1) % select.options.length;
+            select.dispatchEvent(new Event('change'));
+          }
+          break;
+        }
+        case 'KeyC':
+          document.getElementById('btn-toggle-chart')?.click();
+          break;
+        case 'KeyL':
+          document.getElementById('btn-open-genelab')?.click();
+          break;
+        case 'KeyT':
+          document.getElementById('btn-trophies')?.click();
+          break;
+        case 'KeyP':
+          SnapshotExporter.capture(this.canvas, this.world, (msg) => this.controls.showToast(msg));
+          break;
+        case 'KeyF':
+          document.getElementById('btn-fullscreen')?.click();
+          break;
+        case 'KeyH':
+        case 'Slash':
+          document.getElementById('btn-help')?.click();
+          break;
+      }
     });
   }
 

@@ -861,3 +861,76 @@ body, html {
   gap: 0.65rem;
   justify-content: center;
 }
+
+
+/* ==========================================================================
+   Phylogenetic Cladogram & Scientific Guide Modal
+   ========================================================================== */
+.cladogram-container {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  overflow: hidden;
+  background: #040812;
+}
+
+#cladogram-canvas {
+  width: 100%;
+  height: 340px;
+  display: block;
+  cursor: pointer;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1.5rem;
+}
+
+.guide-section h4 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 0.85rem;
+  margin-bottom: 0.35rem;
+}
+
+.guide-section h4:first-child {
+  margin-top: 0;
+}
+
+.guide-section p {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.hotkeys-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: rgba(6, 10, 20, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+}
+
+.hotkeys-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+kbd {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
