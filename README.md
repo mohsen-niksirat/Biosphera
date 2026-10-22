@@ -18,6 +18,8 @@ Unlike traditional rule-based cellular automata or particle visualizers, each or
 
 ## ✨ Key Features
 
+- **⚔️ Gladiator Arena & Fitness Benchmark:** Put any specimen through a rigorous 3-phase standardized coliseum trial (Foraging speed, Hazard navigation, and Hunter drone evasion) to evaluate its adaptive fitness score (0–100) and award an official Specimen Fitness Certificate (Tier S+, A, B, C, D).
+- **🎨 Interactive God Brush & Shockwave Ripples:** Direct tactile interaction with the living water — switch brushes to sow plant colonies, drop nutrient meat, plant toxic vents, or trigger physical water shockwaves that push organisms and food away!
 - **🔬 Genetic Engineering Laboratory (Gene Lab):** Design custom organisms with real-time swimming preview, interactive trait sliders (size, speed, vision cone, diet niche, hue), and estimated basal/kinetic burn rates before releasing them into the wild.
 - **🏆 Evolutionary Achievements (10 Trophies):** Unlocks persistent trophies as your biosphere hits survival milestones (Century Club, Apex Predator, Master Grazer, Ice Age Survivor, Cosmic Mutant).
 - **📱 Progressive Web App (PWA):** Installs as a standalone offline desktop/mobile app via `manifest.json` and service worker caching with zero server dependency.

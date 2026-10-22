@@ -38,6 +38,7 @@ export class Inspector {
     this.onClone = null;
     this.onKill = null;
     this.onExport = null;
+    this.onArenaTrial = null;
 
     document.getElementById('close-inspector')?.addEventListener('click', () => {
       this.deselect();
@@ -112,6 +113,10 @@ export class Inspector {
         <label>Vision Cone</label>
         <span class="stat-val">${Math.round(org.dna.sensorRange)}px @ ${(org.dna.sensorFov * 180 / Math.PI).toFixed(0)}°</span>
       </div>
+      <div class="stat-item" style="grid-column: span 2;">
+        <label>Lineage / Origin</label>
+        <span class="stat-val text-muted">${org.parentId ? `Descendant of #${org.parentId}` : '✨ Genesis Ancestor (Generation 1)'}</span>
+      </div>
     `;
   }
 
@@ -130,11 +135,16 @@ export class Inspector {
 
   renderActions(org) {
     this.actionsContainer.innerHTML = `
+      <button id="btn-arena" class="btn btn-secondary btn-sm" style="grid-column: span 2; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;">⚔️ Arena Benchmark Trial</button>
       <button id="btn-follow" class="btn btn-secondary btn-sm">🎯 Follow</button>
       <button id="btn-clone" class="btn btn-secondary btn-sm">🧬 Clone</button>
       <button id="btn-export" class="btn btn-primary btn-sm">📤 Export DNA</button>
       <button id="btn-kill" class="btn btn-danger btn-sm">💀 Terminate</button>
     `;
+
+    document.getElementById('btn-arena')?.addEventListener('click', () => {
+      this.onArenaTrial?.(org);
+    });
 
     document.getElementById('btn-follow')?.addEventListener('click', () => {
       this.onFollow?.(org);

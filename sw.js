@@ -22,6 +22,8 @@ const ASSETS_TO_CACHE = [
   './src/render/Renderer.js',
   './src/ui/Controls.js',
   './src/ui/GeneLab.js',
+  './src/ui/GodBrush.js',
+  './src/engine/ArenaTrial.js',
   './src/ui/Inspector.js',
   './src/ui/PopulationChart.js'
 ];

@@ -28,7 +28,7 @@ export class Renderer {
     }
   }
 
-  render(world) {
+  render(world, godBrush = null) {
     const width = this.canvas.width;
     const height = this.canvas.height;
     const ctx = this.ctx;
@@ -98,6 +98,11 @@ export class Renderer {
       ctx.globalAlpha = Math.max(0, p.alpha);
       ctx.fill();
       ctx.globalAlpha = 1.0;
+    }
+
+    // 6.5 GOD BRUSH SHOCKWAVES
+    if (godBrush) {
+      godBrush.render(ctx);
     }
 
     // 7. ORGANISMS

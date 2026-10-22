@@ -1,6 +1,6 @@
 /**
  * Biosphera - Main Application Entrypoint
- * Orchestrates simulation, WebAudio, population dynamics, Gene Lab, and Evolutionary Achievements.
+ * Orchestrates simulation, WebAudio, population dynamics, Gene Lab, God Brush, and Gladiator Trials.
  */
 
 import { World } from './engine/World.js';
@@ -12,13 +12,15 @@ import { SoundEngine } from './audio/SoundEngine.js';
 import { PopulationChart } from './ui/PopulationChart.js';
 import { AchievementsEngine } from './engine/Achievements.js';
 import { GeneLab } from './ui/GeneLab.js';
+import { GodBrush } from './ui/GodBrush.js';
+import { ArenaTrial } from './engine/ArenaTrial.js';
 
 class BiospheraApp {
   constructor() {
     this.canvas = document.getElementById('sim-canvas');
     if (!this.canvas) throw new Error('Could not find #sim-canvas');
 
-    // 1. Audio Engine & Charts
+    // 1. Audio Engine, Charts & Achievements
     this.soundEngine = new SoundEngine();
     this.chart = new PopulationChart('chart-canvas', 160);
     this.achievements = new AchievementsEngine();
@@ -28,11 +30,16 @@ class BiospheraApp {
     this.camera = new Camera(this.world.width * 0.5 - 400, this.world.height * 0.5 - 300, 0.75);
     this.renderer = new Renderer(this.canvas, this.camera);
 
-    // 3. UI Modules
+    // 3. UI Modules & Controls
     this.inspector = new Inspector('inspector-panel');
     this.controls = new Controls(this.world, this.soundEngine);
 
-    // 4. Gene Lab
+    // 4. God Brush Engine
+    this.godBrush = new GodBrush(this.world, this.camera, this.soundEngine, (msg) => {
+      this.controls.showToast(msg);
+    });
+
+    // 5. Gene Lab
     this.geneLab = new GeneLab('genelab-modal', (engineeredDNA) => {
       const centerWorld = this.camera.screenToWorld(this.canvas.width * 0.5, this.canvas.height * 0.5);
       const injected = this.world.spawnOrganismAt(centerWorld.x, centerWorld.y, engineeredDNA);
@@ -43,14 +50,21 @@ class BiospheraApp {
       this.controls.showToast('🧬 Injected custom engineered lifeform!');
     });
 
-    // 5. Hook Achievements Unlocked
+    // 6. Gladiator Arena Trial
+    this.arenaTrial = new ArenaTrial('arena-modal', this.soundEngine, (res) => {
+      if (res.score >= 78) {
+        this.achievements.unlock('gladiator');
+      }
+    });
+
+    // 7. Hook Achievements Unlocked
     this.achievements.onUnlock = (trophy) => {
       this.soundEngine.playBirth();
       this.controls.showToast(`🏆 Milestone Unlocked: ${trophy.icon} ${trophy.title}`);
       this.updateTrophyBadge();
     };
 
-    // 6. Hook world sound events
+    // 8. Hook world sound events
     this.world.onEvent = (evt) => {
       switch (evt) {
         case 'birth':
@@ -107,6 +121,15 @@ class BiospheraApp {
     window.addEventListener('resize', () => this.resizeCanvas());
 
     this.canvas.addEventListener('mousedown', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) * (this.canvas.width / rect.width);
+      const mouseY = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+
+      // Check if GodBrush handles the click (sowing, shockwave, meat drop)
+      if (this.godBrush.handleMouseDown(mouseX, mouseY)) {
+        return;
+      }
+
       this.isDragging = true;
       this.dragStartX = e.clientX;
       this.dragStartY = e.clientY;
@@ -116,6 +139,8 @@ class BiospheraApp {
       const rect = this.canvas.getBoundingClientRect();
       const mouseX = (e.clientX - rect.left) * (this.canvas.width / rect.width);
       const mouseY = (e.clientY - rect.top) * (this.canvas.height / rect.height);
+
+      this.godBrush.handleMouseMove(mouseX, mouseY);
 
       if (this.isDragging) {
         const dx = (e.clientX - this.dragStartX) * (this.canvas.width / rect.width);
@@ -131,6 +156,8 @@ class BiospheraApp {
     });
 
     window.addEventListener('mouseup', (e) => {
+      this.godBrush.handleMouseUp();
+
       if (this.isDragging) {
         const movedDist = Math.hypot(e.clientX - this.dragStartX, e.clientY - this.dragStartY);
         if (movedDist < 6) {
@@ -150,6 +177,8 @@ class BiospheraApp {
   }
 
   handleCanvasClick(clientX, clientY) {
+    if (this.godBrush.currentMode !== 'select') return;
+
     const rect = this.canvas.getBoundingClientRect();
     const mouseX = (clientX - rect.left) * (this.canvas.width / rect.width);
     const mouseY = (clientY - rect.top) * (this.canvas.height / rect.height);
@@ -168,10 +197,25 @@ class BiospheraApp {
   }
 
   setupUIBindings() {
+    // God Brush mode buttons
+    document.querySelectorAll('.btn-brush').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.btn-brush').forEach((b) => b.classList.remove('active'));
+        const target = e.currentTarget;
+        target.classList.add('active');
+        this.godBrush.setMode(target.dataset.brush);
+      });
+    });
+
     // Camera follow
     this.inspector.onFollow = (org) => {
       this.camera.follow(org);
       this.controls.showToast(`🎯 Tracking Organism #${org.id}`);
+    };
+
+    // Gladiator Arena Trial trigger
+    this.inspector.onArenaTrial = (org) => {
+      this.arenaTrial.start(org.dna);
     };
 
     // Clone
@@ -284,12 +328,13 @@ class BiospheraApp {
 
     // 1. Simulation Step
     this.world.update(dt);
+    this.godBrush.update(dt);
 
     // 2. Camera tracking
     this.camera.update(this.canvas.width, this.canvas.height);
 
-    // 3. Render Viewport
-    this.renderer.render(this.world);
+    // 3. Render Viewport with GodBrush ripples
+    this.renderer.render(this.world, this.godBrush);
 
     // 4. Update Microscope Inspector
     this.inspector.update();

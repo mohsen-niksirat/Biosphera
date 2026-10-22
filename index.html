@@ -92,6 +92,17 @@
 
       <!-- Bottom Floating Toolbar (Playback & God Mode) -->
       <nav class="floating-bar bottom-bar">
+        <div class="bar-group brush-group">
+          <span class="group-label">Brush:</span>
+          <button class="btn-brush active" data-brush="select" title="Normal cursor & selection">🖐️</button>
+          <button class="btn-brush" data-brush="plant" title="Click or drag to sow plants">🍃 Sow</button>
+          <button class="btn-brush" data-brush="meat" title="Click to drop meat">🥩 Meat</button>
+          <button class="btn-brush" data-brush="current" title="Click/drag to send water shockwaves">⚡ Ripple</button>
+          <button class="btn-brush" data-brush="hazard" title="Click to place a hazard vent">🧪 Vent</button>
+        </div>
+
+        <div class="bar-divider"></div>
+
         <div class="bar-group">
           <button id="btn-play-pause" class="btn btn-primary">⏸ Pause</button>
           <div class="speed-selector">
@@ -163,6 +174,46 @@
         </div>
         <div class="modal-footer">
           <button id="btn-spawn-engineered" class="btn btn-primary">Inject into Biosphere</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gladiator Arena Trial Modal -->
+    <div id="arena-modal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+          <h3>⚔️ Gladiator Fitness Arena Trial</h3>
+          <button id="btn-close-arena" class="btn-icon">&times;</button>
+        </div>
+        <div class="modal-body arena-body">
+          <div id="arena-live-hud" class="arena-live-hud show">
+            <div class="arena-stat"><span class="label">Time Remaining:</span> <strong id="arena-time">25.0s</strong></div>
+            <div class="arena-stat"><strong id="arena-phase-title" class="text-cyan">Phase 1: Foraging Efficiency</strong></div>
+            <div class="arena-stat"><span class="label">Plants Consumed:</span> <strong id="arena-food-count">0</strong></div>
+            <div class="arena-health-bar"><div id="arena-subject-health" class="arena-health-fill" style="width: 100%;"></div></div>
+          </div>
+
+          <div class="arena-canvas-container">
+            <canvas id="arena-canvas" width="640" height="400"></canvas>
+
+            <!-- Results Certificate Overlay -->
+            <div id="arena-results" class="arena-results-overlay">
+              <div class="cert-box">
+                <span class="cert-icon">🎖️</span>
+                <h4>Specimen Fitness Certificate</h4>
+                <div id="cert-grade" class="cert-grade">Tier S+</div>
+                <div class="cert-metrics">
+                  <div><span>Benchmark Score:</span> <strong id="cert-score">0 / 100</strong></div>
+                  <div><span>Foraging Yield:</span> <strong id="cert-plants">0 units</strong></div>
+                  <div><span>Time Survived:</span> <strong id="cert-time">0.0s</strong></div>
+                </div>
+                <div class="cert-actions">
+                  <button id="btn-arena-retry" class="btn btn-secondary">🔁 Retry Trial</button>
+                  <button id="btn-arena-done" class="btn btn-primary" onclick="document.getElementById('arena-modal').style.display='none'">Complete</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

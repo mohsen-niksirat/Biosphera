@@ -85,6 +85,13 @@ export class AchievementsEngine {
         title: 'DNA Courier',
         description: 'Export an organism DNA string to your clipboard.',
         unlocked: false
+      },
+      {
+        id: 'gladiator',
+        icon: '⚔️',
+        title: 'Coliseum Victor',
+        description: 'Attain Tier A or Tier S+ in the Gladiator Fitness trial.',
+        unlocked: false
       }
     ];
 
