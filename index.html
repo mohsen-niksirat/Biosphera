@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Biosphera - Organic Evolution & Neural Life Simulator</title>
+  <meta name="description" content="In-browser digital life simulation powered by genetic algorithms, neural networks, and natural selection." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧬</text></svg>" />
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Top HUD Navigation -->
+    <header class="hud-top">
+      <div class="logo-group">
+        <span class="logo-icon">🧬</span>
+        <div>
+          <h1 class="logo-title">Biosphera</h1>
+          <span class="logo-sub">Artificial Life & Neural Evolution</span>
+        </div>
+      </div>
+
+      <div class="stats-pills">
+        <div class="pill">
+          <span class="pill-label">Population</span>
+          <span class="pill-val" id="stat-pop">0</span>
+        </div>
+        <div class="pill">
+          <span class="pill-label">Max Generation</span>
+          <span class="pill-val text-cyan" id="stat-gen">Gen 1</span>
+        </div>
+        <div class="pill">
+          <span class="pill-label">Diet Balance</span>
+          <span class="pill-val" id="stat-diet-ratio">🌿 0 | 🥩 0 | 🌾 0</span>
+        </div>
+        <div class="pill">
+          <span class="pill-label">Vegetation</span>
+          <span class="pill-val text-green" id="stat-food">0</span>
+        </div>
+        <div class="pill">
+          <span class="pill-label">Avg Lifespan</span>
+          <span class="pill-val" id="stat-lifespan">0s</span>
+        </div>
+        <div class="pill pill-compact">
+          <span class="pill-label">FPS</span>
+          <span class="pill-val text-muted" id="stat-fps">60</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button id="btn-import-dna" class="btn btn-secondary btn-sm">📥 Import DNA</button>
+      </div>
+    </header>
+
+    <!-- Main Viewport Canvas -->
+    <main class="viewport-container">
+      <canvas id="sim-canvas"></canvas>
+
+      <!-- Pan & Zoom Guide Overlay -->
+      <div class="hint-overlay">
+        <span>🖱️ Drag to pan • Scroll to zoom • Click organism to inspect brain</span>
+      </div>
+
+      <!-- Right Floating Inspector (Microscope) -->
+      <aside id="inspector-panel" class="floating-panel inspector-panel"></aside>
+
+      <!-- Bottom Floating Toolbar (Playback & God Mode) -->
+      <nav class="floating-bar bottom-bar">
+        <div class="bar-group">
+          <button id="btn-play-pause" class="btn btn-primary">⏸ Pause</button>
+          <div class="speed-selector">
+            <button class="btn-speed active" data-speed="1">1x</button>
+            <button class="btn-speed" data-speed="2">2x</button>
+            <button class="btn-speed" data-speed="5">5x</button>
+            <button class="btn-speed" data-speed="10">10x</button>
+          </div>
+        </div>
+
+        <div class="bar-divider"></div>
+
+        <div class="bar-group">
+          <span class="group-label">God Mode:</span>
+          <button id="btn-food-bloom" class="btn btn-tool" title="Spawn +150 plant nutrients">🍃 Food Bloom</button>
+          <button id="btn-ice-age" class="btn btn-tool" title="Freeze vegetation growth & stress metabolism">❄️ Ice Age</button>
+          <button id="btn-radiation" class="btn btn-tool" title="Cosmic mutation flare">☢️ Radiation</button>
+          <button id="btn-toxic-vent" class="btn btn-tool" title="Spawn a hazardous thermal vent">🧪 Toxic Vent</button>
+          <button id="btn-spawn-more" class="btn btn-tool" title="Inject 20 new genesis organisms">+20 Genesis</button>
+          <button id="btn-reset-world" class="btn btn-danger btn-sm" title="Wipe & restart">🔄 Reset</button>
+        </div>
+      </nav>
+    </main>
+
+    <!-- DNA Import / Export Modal -->
+    <div id="dna-modal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>🧬 Inject Custom Organism DNA</h3>
+          <button id="close-modal" class="btn-icon">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">Paste an exported organism DNA string below to inject that genetic lineage directly into this biosphere.</p>
+          <textarea id="dna-textarea" rows="5" placeholder="Paste Base64 DNA string here..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-submit-dna" class="btn btn-primary">Inject Organism</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
