@@ -3,6 +3,9 @@
  * Allows users to paint vegetation, drop meat, plant hazards, or create physical water ripples.
  */
 
+import { Food } from '../entities/Food.js';
+import { Hazard } from '../entities/Hazard.js';
+
 export class GodBrush {
   constructor(world, camera, soundEngine, showToastCallback) {
     this.world = world;
@@ -60,29 +63,29 @@ export class GodBrush {
 
     switch (this.currentMode) {
       case 'plant': {
-        const FoodClass = this.world.foods[0]?.constructor;
-        // Spawn small cluster of plants
-        for (let i = 0; i < 3; i++) {
-          const offsetX = (Math.random() - 0.5) * 24;
-          const offsetY = (Math.random() - 0.5) * 24;
-          this.world.foods.push(new FoodClass(wx + offsetX, wy + offsetY, 'plant'));
+        if (this.world.foods.length < this.world.maxFoodCap) {
+          for (let i = 0; i < 3; i++) {
+            const offsetX = (Math.random() - 0.5) * 24;
+            const offsetY = (Math.random() - 0.5) * 24;
+            this.world.foods.push(new Food(wx + offsetX, wy + offsetY, 'plant'));
+          }
+          this.world.addParticleBurst(wx, wy, '#10b981', 5);
+          this.soundEngine?.playEat();
         }
-        this.world.addParticleBurst(wx, wy, '#10b981', 5);
-        this.soundEngine?.playEat();
         break;
       }
 
       case 'meat': {
-        const FoodClass = this.world.foods[0]?.constructor;
-        this.world.foods.push(new FoodClass(wx, wy, 'meat', 45));
-        this.world.addParticleBurst(wx, wy, '#f43f5e', 7);
-        this.soundEngine?.playEat();
+        if (this.world.foods.length < this.world.maxFoodCap) {
+          this.world.foods.push(new Food(wx, wy, 'meat', 45));
+          this.world.addParticleBurst(wx, wy, '#f43f5e', 7);
+          this.soundEngine?.playEat();
+        }
         break;
       }
 
       case 'hazard': {
-        const HazardClass = this.world.hazards[0]?.constructor;
-        this.world.hazards.push(new HazardClass(wx, wy, 55, 45));
+        this.world.hazards.push(new Hazard(wx, wy, 55, 45));
         this.world.addParticleBurst(wx, wy, '#ef4444', 12);
         this.soundEngine?.playDisaster();
         this.showToast?.('🧪 Hazardous vent placed.');

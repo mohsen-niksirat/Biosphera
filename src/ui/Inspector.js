@@ -43,6 +43,9 @@ export class Inspector {
     document.getElementById('close-inspector')?.addEventListener('click', () => {
       this.deselect();
     });
+
+    // Start hidden until user clicks an organism
+    this.container.style.display = 'none';
   }
 
   inspect(org) {
@@ -51,11 +54,13 @@ export class Inspector {
     const content = document.getElementById('inspector-content');
 
     if (!org || org.isDead) {
+      this.container.style.display = 'none';
       if (emptyState) emptyState.style.display = 'block';
       if (content) content.style.display = 'none';
       return;
     }
 
+    this.container.style.display = 'block';
     if (emptyState) emptyState.style.display = 'none';
     if (content) content.style.display = 'block';
 

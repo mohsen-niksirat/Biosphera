@@ -27,6 +27,7 @@ export class Organism {
     this.plantsEaten = 0;
     this.kills = 0;
     this.childrenCount = 0;
+    this.reproduceCooldown = 6.0; // Must mature before reproducing
 
     this.latestInputs = new Float32Array(8);
     this.latestOutputs = new Float32Array(4);
@@ -38,6 +39,9 @@ export class Organism {
     if (this.isDead) return null;
 
     this.age += dt;
+    if (this.reproduceCooldown > 0) {
+      this.reproduceCooldown -= dt;
+    }
     this.tailPhase += dt * (2 + Math.hypot(this.vx, this.vy) * 2.5);
 
     // 1. SENSE
@@ -115,9 +119,28 @@ export class Organism {
       return null;
     }
 
-    // 7. REPRODUCTION
-    if (splitIntent > 0.25 && this.energy >= this.dna.reproduceThreshold) {
-      return this.reproduce();
+    // 7. REPRODUCTION (Restricted by maturity age, cooldown & local crowd density)
+    if (
+      splitIntent > 0.35 &&
+      this.energy >= this.dna.reproduceThreshold &&
+      this.age >= 6.0 &&
+      this.reproduceCooldown <= 0
+    ) {
+      let localCrowding = 0;
+      const crowdCheckRadius = this.radius * 4;
+      for (let i = 0; i < nearbyOrganisms.length; i++) {
+        const o = nearbyOrganisms[i];
+        if (o.id !== this.id && !o.isDead) {
+          const d = Math.hypot(o.x - this.x, o.y - this.y);
+          if (d < crowdCheckRadius) {
+            localCrowding++;
+          }
+        }
+      }
+
+      if (localCrowding < 6) {
+        return this.reproduce();
+      }
     }
 
     return null;
@@ -262,9 +285,12 @@ export class Organism {
   }
 
   reproduce() {
+    this.reproduceCooldown = 8.0 + Math.random() * 4.0; // 8-12 seconds cooldown
     const childDNA = this.dna.mutate(0.08, 0.25);
-    const childEnergy = this.energy * this.dna.gestationShare;
-    this.energy -= childEnergy;
+    const share = Math.min(0.45, Math.max(0.3, this.dna.gestationShare));
+    const childEnergy = this.energy * share;
+    // Overhead metabolic tax ensures parent is well below reproduction threshold
+    this.energy = Math.min(this.energy * (1 - share) * 0.85, this.dna.reproduceThreshold * 0.7);
     this.childrenCount++;
 
     const spawnAngle = this.heading + Math.PI + (Math.random() - 0.5) * 0.8;

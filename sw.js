@@ -2,7 +2,7 @@
  * Biosphera - Service Worker for 100% Offline PWA Execution
  */
 
-const CACHE_NAME = 'biosphera-v2';
+const CACHE_NAME = 'biosphera-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

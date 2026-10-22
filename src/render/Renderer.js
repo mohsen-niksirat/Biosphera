@@ -72,21 +72,47 @@ export class Renderer {
       ctx.fill();
     }
 
-    // 5. FOOD
+    // 5. FOOD (High performance batch rendering for silky 60 FPS)
+    const plantColor = isBioluminescent ? '#34d399' : '#10b981';
+    const meatColor = '#f43f5e';
+
+    // Batch draw plants
+    ctx.beginPath();
+    let hasPlants = false;
     for (let i = 0; i < world.foods.length; i++) {
       const f = world.foods[i];
-      if (!this.isInView(f.x, f.y, f.radius + 10)) continue;
-
-      ctx.beginPath();
-      ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
-      if (f.type === 'plant') {
-        ctx.fillStyle = isBioluminescent ? '#34d399' : '#10b981';
+      if (f.type === 'plant' && this.isInView(f.x, f.y, f.radius + 10)) {
+        ctx.moveTo(f.x + f.radius, f.y);
+        ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+        hasPlants = true;
+      }
+    }
+    if (hasPlants) {
+      ctx.fillStyle = plantColor;
+      if (isBioluminescent && world.foods.length < 100) {
         ctx.shadowColor = '#10b981';
-        ctx.shadowBlur = isBioluminescent ? 10 : 5;
-      } else {
-        ctx.fillStyle = '#f43f5e';
+        ctx.shadowBlur = 8;
+      }
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // Batch draw meats
+    ctx.beginPath();
+    let hasMeats = false;
+    for (let i = 0; i < world.foods.length; i++) {
+      const f = world.foods[i];
+      if (f.type === 'meat' && this.isInView(f.x, f.y, f.radius + 10)) {
+        ctx.moveTo(f.x + f.radius, f.y);
+        ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+        hasMeats = true;
+      }
+    }
+    if (hasMeats) {
+      ctx.fillStyle = meatColor;
+      if (isBioluminescent && world.foods.length < 100) {
         ctx.shadowColor = '#f43f5e';
-        ctx.shadowBlur = isBioluminescent ? 12 : 6;
+        ctx.shadowBlur = 10;
       }
       ctx.fill();
       ctx.shadowBlur = 0;

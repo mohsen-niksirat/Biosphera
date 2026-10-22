@@ -40,6 +40,16 @@ export class Camera {
     this.y = worldY - screenY / this.zoom;
   }
 
+  zoomByRatio(ratio, screenX, screenY) {
+    this.target = null;
+    const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * ratio));
+    const worldX = this.x + screenX / this.zoom;
+    const worldY = this.y + screenY / this.zoom;
+    this.zoom = newZoom;
+    this.x = worldX - screenX / this.zoom;
+    this.y = worldY - screenY / this.zoom;
+  }
+
   pan(dx, dy) {
     this.target = null;
     this.x -= dx / this.zoom;

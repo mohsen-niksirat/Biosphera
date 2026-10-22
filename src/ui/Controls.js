@@ -142,7 +142,7 @@ export class Controls {
     if (elPop) elPop.innerText = stats.population.toString();
     if (elGen) elGen.innerText = `Gen ${stats.maxGeneration}`;
     if (elEcosystem) {
-      elEcosystem.innerHTML = `🌿 ${stats.herbivores} | 🥩 ${stats.carnivores} | 🌾 ${stats.omnivores}`;
+      elEcosystem.innerHTML = `<span>🌿${stats.herbivores}</span> <span>🥩${stats.carnivores}</span> <span>🌾${stats.omnivores}</span>`;
     }
     if (elFood) elFood.innerText = stats.foodCount.toString();
     if (elLifespan) elLifespan.innerText = `${stats.avgLifespan}s`;

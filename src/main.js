@@ -128,15 +128,20 @@ class BiospheraApp {
 
   resizeCanvas() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    this.canvas.width = window.innerWidth * dpr;
-    this.canvas.height = (window.innerHeight - 64) * dpr;
-    this.canvas.style.width = `${window.innerWidth}px`;
-    this.canvas.style.height = `${window.innerHeight - 64}px`;
+    const container = this.canvas.parentElement || document.body;
+    const width = container.clientWidth || window.innerWidth;
+    const height = container.clientHeight || (window.innerHeight - 60);
+
+    this.canvas.width = width * dpr;
+    this.canvas.height = height * dpr;
+    this.canvas.style.width = `${width}px`;
+    this.canvas.style.height = `${height}px`;
   }
 
   setupEventListeners() {
     window.addEventListener('resize', () => this.resizeCanvas());
 
+    // Mouse Controls
     this.canvas.addEventListener('mousedown', (e) => {
       const rect = this.canvas.getBoundingClientRect();
       const mouseX = (e.clientX - rect.left) * (this.canvas.width / rect.width);
@@ -190,6 +195,110 @@ class BiospheraApp {
       const screenY = (e.clientY - rect.top) * (this.canvas.height / rect.height);
       this.camera.zoomAt(e.deltaY, screenX, screenY);
     }, { passive: false });
+
+    // Touch Controls (Mobile drag to pan, pinch to zoom, tap to inspect)
+    let lastTouchX = 0;
+    let lastTouchY = 0;
+    let initialPinchDistance = null;
+    let isPinching = false;
+    let touchStartTime = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    this.canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const touchX = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
+        const touchY = (touch.clientY - rect.top) * (this.canvas.height / rect.height);
+
+        touchStartTime = performance.now();
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        lastTouchX = touch.clientX;
+        lastTouchY = touch.clientY;
+
+        if (this.godBrush.handleMouseDown(touchX, touchY)) {
+          return;
+        }
+
+        this.isDragging = true;
+        this.dragStartX = touch.clientX;
+        this.dragStartY = touch.clientY;
+      } else if (e.touches.length === 2) {
+        isPinching = true;
+        this.isDragging = false;
+        this.godBrush.handleMouseUp();
+        initialPinchDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+
+      if (e.touches.length === 2 && isPinching && initialPinchDistance) {
+        const currentDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const ratio = currentDistance / initialPinchDistance;
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) * 0.5;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) * 0.5;
+
+        const rect = this.canvas.getBoundingClientRect();
+        const screenX = (midX - rect.left) * (this.canvas.width / rect.width);
+        const screenY = (midY - rect.top) * (this.canvas.height / rect.height);
+
+        this.camera.zoomByRatio(ratio, screenX, screenY);
+        initialPinchDistance = currentDistance;
+      } else if (e.touches.length === 1 && !isPinching) {
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const touchX = (touch.clientX - rect.left) * (this.canvas.width / rect.width);
+        const touchY = (touch.clientY - rect.top) * (this.canvas.height / rect.height);
+
+        if (this.godBrush.currentMode !== 'select') {
+          this.godBrush.handleMouseMove(touchX, touchY);
+        } else if (this.isDragging) {
+          const dx = (touch.clientX - lastTouchX) * (this.canvas.width / rect.width);
+          const dy = (touch.clientY - lastTouchY) * (this.canvas.height / rect.height);
+          this.camera.pan(dx, dy);
+          lastTouchX = touch.clientX;
+          lastTouchY = touch.clientY;
+        }
+      }
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchend', (e) => {
+      if (e.touches.length === 0) {
+        this.godBrush.handleMouseUp();
+        if (this.isDragging && !isPinching) {
+          const elapsed = performance.now() - touchStartTime;
+          const movedDist = Math.hypot(lastTouchX - touchStartX, lastTouchY - touchStartY);
+          if (elapsed < 350 && movedDist < 12) {
+            this.handleCanvasClick(touchStartX, touchStartY);
+          }
+        }
+        this.isDragging = false;
+        isPinching = false;
+        initialPinchDistance = null;
+      } else if (e.touches.length === 1) {
+        isPinching = false;
+        initialPinchDistance = null;
+        lastTouchX = e.touches[0].clientX;
+        lastTouchY = e.touches[0].clientY;
+      }
+    });
+
+    this.canvas.addEventListener('touchcancel', () => {
+      this.isDragging = false;
+      isPinching = false;
+      initialPinchDistance = null;
+      this.godBrush.handleMouseUp();
+    });
   }
 
   handleCanvasClick(clientX, clientY) {
@@ -339,6 +448,33 @@ class BiospheraApp {
     document.getElementById('btn-close-guide')?.addEventListener('click', () => {
       const modal = document.getElementById('guide-modal');
       if (modal) modal.style.display = 'none';
+    });
+
+    // Mobile Tools Menu Toggle
+    const btnMobileMenu = document.getElementById('btn-mobile-menu');
+    const topActions = document.getElementById('top-actions');
+    btnMobileMenu?.addEventListener('click', () => {
+      topActions?.classList.toggle('mobile-open');
+    });
+
+    // Close mobile menu when an action is selected
+    topActions?.querySelectorAll('button, select').forEach((el) => {
+      el.addEventListener('click', () => {
+        if (window.innerWidth <= 840) {
+          topActions.classList.remove('mobile-open');
+        }
+      });
+    });
+
+    // Toggle Floating Toolbar (minimize for mobile or clean view)
+    const btnToggleToolbar = document.getElementById('btn-toggle-toolbar');
+    const bottomBar = document.getElementById('bottom-bar');
+    btnToggleToolbar?.addEventListener('click', () => {
+      if (bottomBar) {
+        bottomBar.classList.toggle('toolbar-minimized');
+        const isMin = bottomBar.classList.contains('toolbar-minimized');
+        btnToggleToolbar.innerText = isMin ? '▲ Controls' : '▼ Hide';
+      }
     });
   }
 

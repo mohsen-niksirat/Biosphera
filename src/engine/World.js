@@ -21,8 +21,9 @@ export class World {
     this.spatialOrganisms = new SpatialHash(90);
     this.spatialFoods = new SpatialHash(70);
 
-    this.foodSpawnRate = 18;
-    this.maxFoodCap = 450;
+    this.foodSpawnRate = 16;
+    this.maxFoodCap = 300;
+    this.maxPopulationCap = 160; // Optimal carrying capacity for 60 FPS
     this.timeScale = 1;
     this.isPaused = false;
     this.currentPreset = 'sanctuary';
@@ -66,35 +67,35 @@ export class World {
 
       case 'radiation':
         // Radiation Trench: Multiple toxic vents, hyper mutations
-        this.foodSpawnRate = 22;
-        this.maxFoodCap = 400;
-        for (let i = 0; i < 6; i++) {
+        this.foodSpawnRate = 18;
+        this.maxFoodCap = 280;
+        for (let i = 0; i < 5; i++) {
           this.hazards.push(new Hazard(Math.random() * this.width, Math.random() * this.height, 70, 50));
         }
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 150; i++) {
           this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
         }
-        this.spawnRandomPopulation(40);
+        this.spawnRandomPopulation(35);
         break;
 
       case 'glacial':
         // Glacial Tundra: Low vegetation, high energy requirements
         this.foodSpawnRate = 8;
-        this.maxFoodCap = 200;
+        this.maxFoodCap = 180;
         this.iceAgeTimer = 99999; // Permanent chill
-        for (let i = 0; i < 120; i++) {
+        for (let i = 0; i < 100; i++) {
           this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
         }
-        this.spawnRandomPopulation(30);
+        this.spawnRandomPopulation(25);
         break;
 
       case 'sanctuary':
       default:
         // Balanced Primordial Reef
-        this.foodSpawnRate = 18;
-        this.maxFoodCap = 450;
+        this.foodSpawnRate = 16;
+        this.maxFoodCap = 260;
         this.iceAgeTimer = 0;
-        for (let i = 0; i < 220; i++) {
+        for (let i = 0; i < 160; i++) {
           this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
         }
         this.hazards.push(new Hazard(this.width * 0.25, this.height * 0.35, 60, 45));
@@ -210,7 +211,7 @@ export class World {
         this.hazards
       );
 
-      if (offspring) {
+      if (offspring && (this.organisms.length + newborns.length) < this.maxPopulationCap) {
         newborns.push(offspring);
         this.totalBorn++;
         this.addParticleBurst(org.x, org.y, `hsl(${org.dna.colorHue}, 80%, 65%)`, 10);
@@ -227,11 +228,14 @@ export class World {
 
         this.addParticleBurst(org.x, org.y, '#f43f5e', 8);
 
-        const meatCount = Math.max(1, Math.floor(org.radius / 5));
-        for (let m = 0; m < meatCount; m++) {
-          const dropX = (org.x + (Math.random() - 0.5) * 15 + this.width) % this.width;
-          const dropY = (org.y + (Math.random() - 0.5) * 15 + this.height) % this.height;
-          this.foods.push(new Food(dropX, dropY, 'meat', 35));
+        // Controlled meat drop: prevent food explosions
+        if (this.foods.length < this.maxFoodCap) {
+          const meatCount = org.radius > 16 ? 2 : 1;
+          for (let m = 0; m < meatCount; m++) {
+            const dropX = (org.x + (Math.random() - 0.5) * 15 + this.width) % this.width;
+            const dropY = (org.y + (Math.random() - 0.5) * 15 + this.height) % this.height;
+            this.foods.push(new Food(dropX, dropY, 'meat', 35));
+          }
         }
 
         this.organisms.splice(i, 1);
@@ -265,7 +269,8 @@ export class World {
   }
 
   triggerFoodSurge() {
-    for (let i = 0; i < 150; i++) {
+    const toAdd = Math.min(60, Math.max(15, this.maxFoodCap - this.foods.length));
+    for (let i = 0; i < toAdd; i++) {
       this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
     }
     this.onEvent?.('eat');

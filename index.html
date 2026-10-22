@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#060a12" />
   <title>Biosphera - Organic Evolution & Neural Life Simulator</title>
   <meta name="description" content="In-browser digital life simulation powered by genetic algorithms, neural networks, and natural selection." />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧬</text></svg>" />
@@ -48,7 +49,7 @@
         </div>
       </div>
 
-      <div class="top-actions">
+      <div class="top-actions" id="top-actions">
         <select id="select-scenario" class="select-scenario" title="Choose evolutionary starting condition">
           <option value="sanctuary">🏝️ Primordial Reef</option>
           <option value="wasteland">🥩 Predator Wasteland</option>
@@ -71,6 +72,8 @@
         <button id="btn-help" class="btn btn-secondary btn-sm" title="Science guide & hotkeys">❓</button>
         <button id="btn-fullscreen" class="btn btn-secondary btn-sm" title="Toggle Fullscreen">⛶</button>
       </div>
+
+      <button id="btn-mobile-menu" class="btn btn-secondary btn-sm btn-mobile-menu" title="Toggle Tools Menu">☰ Tools</button>
     </header>
 
     <!-- Main Viewport Canvas -->
@@ -79,11 +82,12 @@
 
       <!-- Pan & Zoom Guide Overlay -->
       <div class="hint-overlay">
-        <span>🖱️ Drag to pan • Scroll to zoom • Click organism to inspect brain</span>
+        <span class="desktop-hint">🖱️ Drag to pan • Scroll to zoom • Click organism to inspect</span>
+        <span class="mobile-hint">👆 Drag to pan • Pinch to zoom • Tap organism</span>
       </div>
 
       <!-- Right Floating Inspector (Microscope) -->
-      <aside id="inspector-panel" class="floating-panel inspector-panel"></aside>
+      <aside id="inspector-panel" class="floating-panel inspector-panel" style="display: none;"></aside>
 
       <!-- Bottom-Left Population Dynamics Drawer -->
       <div id="chart-drawer" class="floating-panel chart-drawer">
@@ -99,8 +103,11 @@
         <canvas id="chart-canvas" width="340" height="90"></canvas>
       </div>
 
+      <!-- Toggle Bottom Toolbar Button (for mobile / clean view) -->
+      <button id="btn-toggle-toolbar" class="btn-toggle-toolbar" title="Toggle Controls">⚙️ Controls</button>
+
       <!-- Bottom Floating Toolbar (Playback & God Mode) -->
-      <nav class="floating-bar bottom-bar">
+      <nav id="bottom-bar" class="floating-bar bottom-bar">
         <div class="bar-group brush-group">
           <span class="group-label">Brush:</span>
           <button class="btn-brush active" data-brush="select" title="Normal cursor & selection">🖐️</button>
