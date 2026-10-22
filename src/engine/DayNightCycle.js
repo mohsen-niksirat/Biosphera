@@ -3,8 +3,6 @@
  * Controls environmental lighting, diurnal plant photosynthesis, and nocturnal bioluminescence.
  */
 
-export type TimeOfDay = 'day' | 'dusk' | 'night' | 'dawn';
-
 export class DayNightCycle {
   constructor(cycleDuration = 90) { // 90 seconds per full 24h cycle
     this.cycleDuration = cycleDuration;

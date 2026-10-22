@@ -3,8 +3,6 @@
  * Allows users to paint vegetation, drop meat, plant hazards, or create physical water ripples.
  */
 
-export type BrushMode = 'select' | 'plant' | 'meat' | 'hazard' | 'current';
-
 export class GodBrush {
   constructor(world, camera, soundEngine, showToastCallback) {
     this.world = world;

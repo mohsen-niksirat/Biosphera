@@ -3,15 +3,6 @@
  * Celebrates evolutionary milestones, emergent behaviors, and survival triumphs.
  */
 
-export interface Trophy {
-  id: string;
-  icon: string;
-  title: string;
-  description: string;
-  unlocked: boolean;
-  unlockedAt?: string;
-}
-
 export class AchievementsEngine {
   constructor(storageKey = 'biosphera_achievements') {
     this.storageKey = storageKey;
