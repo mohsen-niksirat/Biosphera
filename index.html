@@ -6,6 +6,7 @@
   <title>Biosphera - Organic Evolution & Neural Life Simulator</title>
   <meta name="description" content="In-browser digital life simulation powered by genetic algorithms, neural networks, and natural selection." />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧬</text></svg>" />
+  <link rel="manifest" href="./manifest.json" />
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
@@ -54,9 +55,12 @@
           <option value="radiation">☢️ Radiation Trench</option>
           <option value="glacial">❄️ Glacial Tundra</option>
         </select>
+        <button id="btn-open-genelab" class="btn btn-secondary btn-sm" title="Engineer custom organism">🔬 Gene Lab</button>
+        <button id="btn-trophies" class="btn btn-secondary btn-sm" title="View unlocked evolutionary milestones">🏆 <span id="trophy-count" class="badge badge-herbivore">0/10</span></button>
         <button id="btn-sound" class="btn btn-secondary btn-sm" title="Toggle procedural soundscape">🔇 Sound: Off</button>
         <button id="btn-toggle-chart" class="btn btn-secondary btn-sm" title="Toggle Lotka-Volterra ecology chart">📈 Dynamics</button>
-        <button id="btn-import-dna" class="btn btn-secondary btn-sm">📥 Import DNA</button>
+        <button id="btn-import-dna" class="btn btn-secondary btn-sm" title="Import DNA string">📥 DNA</button>
+        <button id="btn-fullscreen" class="btn btn-secondary btn-sm" title="Toggle Fullscreen">⛶</button>
       </div>
     </header>
 
@@ -111,6 +115,70 @@
         </div>
       </nav>
     </main>
+
+    <!-- Gene Lab Modal -->
+    <div id="genelab-modal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+          <h3>🔬 Genetic Engineering Laboratory</h3>
+          <button id="btn-close-genelab" class="btn-icon">&times;</button>
+        </div>
+        <div class="modal-body genelab-grid">
+          <div class="genelab-controls">
+            <div class="slider-group">
+              <label>Size / Mass: <span id="gene-size-val">12</span>px</label>
+              <input type="range" id="gene-size" min="6" max="22" step="0.5" value="12" />
+            </div>
+            <div class="slider-group">
+              <label>Top Speed: <span id="gene-speed-val">3.0</span>x</label>
+              <input type="range" id="gene-speed" min="1.5" max="5.5" step="0.1" value="3.0" />
+            </div>
+            <div class="slider-group">
+              <label>Vision Distance: <span id="gene-vision-val">160</span>px</label>
+              <input type="range" id="gene-vision" min="60" max="300" step="5" value="160" />
+            </div>
+            <div class="slider-group">
+              <label>Vision Cone FOV: <span id="gene-fov-val">162</span>°</label>
+              <input type="range" id="gene-fov" min="45" max="300" step="5" value="162" />
+            </div>
+            <div class="slider-group">
+              <label>Dietary Niche (Herbivore 🌿 ⟷ 🥩 Carnivore)</label>
+              <input type="range" id="gene-diet" min="-1" max="1" step="0.05" value="-0.6" />
+            </div>
+            <div class="slider-group">
+              <label>Color Palette Hue: <span id="gene-hue-val">175</span>°</label>
+              <input type="range" id="gene-hue" min="0" max="360" step="1" value="175" />
+            </div>
+          </div>
+
+          <div class="genelab-preview">
+            <label class="preview-title">Live Specimen Preview</label>
+            <canvas id="gene-preview-canvas" width="220" height="200"></canvas>
+            <div class="metabolic-estimate">
+              <div><span class="muted-label">Niche:</span> <span id="stat-diet-badge" class="badge badge-herbivore">🌿 Herbivore</span></div>
+              <div><span class="muted-label">Basal Burn:</span> <span id="stat-burn-basal">0.55/s</span></div>
+              <div><span class="muted-label">Sprint Burn:</span> <span id="stat-burn-kinetic">0.43/s</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-spawn-engineered" class="btn btn-primary">Inject into Biosphere</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Achievements / Trophies Modal -->
+    <div id="trophies-modal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>🏆 Evolutionary Milestones</h3>
+          <button id="btn-close-trophies" class="btn-icon">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div id="trophies-list" class="trophies-list"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- DNA Import / Export Modal -->
     <div id="dna-modal" class="modal-backdrop" style="display: none;">

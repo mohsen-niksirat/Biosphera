@@ -594,3 +594,134 @@ body, html {
   border-radius: var(--radius-sm);
   display: block;
 }
+
+
+/* ==========================================================================
+   Gene Lab Modal & Trophies System
+   ========================================================================== */
+.modal-lg {
+  max-width: 680px;
+}
+
+.genelab-grid {
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: 1.5rem;
+}
+
+.genelab-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.slider-group label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.slider-group input[type="range"] {
+  width: 100%;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.genelab-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(6, 10, 20, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+}
+
+.preview-title {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#gene-preview-canvas {
+  width: 200px;
+  height: 180px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  margin-bottom: 0.75rem;
+}
+
+.metabolic-estimate {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+}
+
+.muted-label {
+  color: var(--text-muted);
+}
+
+.trophies-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 0.4rem;
+}
+
+.trophy-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  opacity: 0.5;
+  filter: grayscale(0.8);
+  transition: all 0.2s ease;
+}
+
+.trophy-card.unlocked {
+  opacity: 1;
+  filter: grayscale(0);
+  border-color: rgba(250, 204, 21, 0.4);
+  background: rgba(30, 41, 59, 0.85);
+}
+
+.trophy-icon {
+  font-size: 1.8rem;
+}
+
+.trophy-info {
+  flex: 1;
+}
+
+.trophy-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.trophy-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.trophy-time {
+  font-size: 0.68rem;
+  color: #facc15;
+}

@@ -1,6 +1,6 @@
 /**
  * Biosphera - Main Application Entrypoint
- * Enhanced with procedural audio soundscape and real-time population dynamics charts.
+ * Orchestrates simulation, WebAudio, population dynamics, Gene Lab, and Evolutionary Achievements.
  */
 
 import { World } from './engine/World.js';
@@ -10,6 +10,8 @@ import { Inspector } from './ui/Inspector.js';
 import { Controls } from './ui/Controls.js';
 import { SoundEngine } from './audio/SoundEngine.js';
 import { PopulationChart } from './ui/PopulationChart.js';
+import { AchievementsEngine } from './engine/Achievements.js';
+import { GeneLab } from './ui/GeneLab.js';
 
 class BiospheraApp {
   constructor() {
@@ -19,6 +21,7 @@ class BiospheraApp {
     // 1. Audio Engine & Charts
     this.soundEngine = new SoundEngine();
     this.chart = new PopulationChart('chart-canvas', 160);
+    this.achievements = new AchievementsEngine();
 
     // 2. World & Camera
     this.world = new World(2400, 1800);
@@ -29,7 +32,25 @@ class BiospheraApp {
     this.inspector = new Inspector('inspector-panel');
     this.controls = new Controls(this.world, this.soundEngine);
 
-    // 4. Hook world sound events
+    // 4. Gene Lab
+    this.geneLab = new GeneLab('genelab-modal', (engineeredDNA) => {
+      const centerWorld = this.camera.screenToWorld(this.canvas.width * 0.5, this.canvas.height * 0.5);
+      const injected = this.world.spawnOrganismAt(centerWorld.x, centerWorld.y, engineeredDNA);
+      this.renderer.selectedOrganism = injected;
+      this.inspector.inspect(injected);
+      this.camera.follow(injected);
+      this.achievements.unlock('bio_engineer');
+      this.controls.showToast('🧬 Injected custom engineered lifeform!');
+    });
+
+    // 5. Hook Achievements Unlocked
+    this.achievements.onUnlock = (trophy) => {
+      this.soundEngine.playBirth();
+      this.controls.showToast(`🏆 Milestone Unlocked: ${trophy.icon} ${trophy.title}`);
+      this.updateTrophyBadge();
+    };
+
+    // 6. Hook world sound events
     this.world.onEvent = (evt) => {
       switch (evt) {
         case 'birth':
@@ -43,6 +64,8 @@ class BiospheraApp {
           break;
         case 'disaster':
           this.soundEngine.playDisaster();
+          if (this.world.iceAgeTimer > 0) this.achievements.unlock('ice_survivor');
+          if (this.world.radiationTimer > 0) this.achievements.unlock('mutant_x');
           break;
       }
     };
@@ -60,8 +83,16 @@ class BiospheraApp {
     this.resizeCanvas();
     this.setupEventListeners();
     this.setupUIBindings();
+    this.setupPWA();
+    this.updateTrophyBadge();
 
     requestAnimationFrame((t) => this.loop(t));
+  }
+
+  setupPWA() {
+    if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
   }
 
   resizeCanvas() {
@@ -137,11 +168,13 @@ class BiospheraApp {
   }
 
   setupUIBindings() {
+    // Camera follow
     this.inspector.onFollow = (org) => {
       this.camera.follow(org);
       this.controls.showToast(`🎯 Tracking Organism #${org.id}`);
     };
 
+    // Clone
     this.inspector.onClone = (org) => {
       const childDNA = org.dna.mutate(0.04, 0.15);
       const clone = this.world.spawnOrganismAt(org.x + 20, org.y + 20, childDNA);
@@ -150,13 +183,16 @@ class BiospheraApp {
       this.controls.showToast('🧬 Organism cloned and mutated!');
     };
 
+    // Kill
     this.inspector.onKill = (org) => {
       org.isDead = true;
       this.renderer.selectedOrganism = null;
       this.controls.showToast('💀 Organism terminated.');
     };
 
+    // Export DNA
     this.inspector.onExport = (dnaString) => {
+      this.achievements.unlock('dna_globetrotter');
       navigator.clipboard.writeText(dnaString).then(() => {
         this.controls.showToast('📋 DNA string copied to clipboard!');
       }).catch(() => {
@@ -164,6 +200,7 @@ class BiospheraApp {
       });
     };
 
+    // Import DNA
     this.controls.onImportDNA = (dna) => {
       const centerWorld = this.camera.screenToWorld(this.canvas.width * 0.5, this.canvas.height * 0.5);
       const injected = this.world.spawnOrganismAt(centerWorld.x, centerWorld.y, dna);
@@ -171,6 +208,59 @@ class BiospheraApp {
       this.inspector.inspect(injected);
       this.camera.follow(injected);
     };
+
+    // Fullscreen toggle
+    document.getElementById('btn-fullscreen')?.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // Gene Lab modal trigger
+    document.getElementById('btn-open-genelab')?.addEventListener('click', () => {
+      this.geneLab.open();
+    });
+
+    // Trophies modal trigger
+    document.getElementById('btn-trophies')?.addEventListener('click', () => {
+      this.showTrophiesModal();
+    });
+
+    document.getElementById('btn-close-trophies')?.addEventListener('click', () => {
+      const modal = document.getElementById('trophies-modal');
+      if (modal) modal.style.display = 'none';
+    });
+  }
+
+  updateTrophyBadge() {
+    const badge = document.getElementById('trophy-count');
+    if (badge) {
+      badge.innerText = `${this.achievements.getUnlockedCount()}/${this.achievements.trophies.length}`;
+    }
+  }
+
+  showTrophiesModal() {
+    const modal = document.getElementById('trophies-modal');
+    const list = document.getElementById('trophies-list');
+    if (!modal || !list) return;
+
+    list.innerHTML = this.achievements.trophies.map(t => `
+      <div class="trophy-card ${t.unlocked ? 'unlocked' : ''}">
+        <span class="trophy-icon">${t.icon}</span>
+        <div class="trophy-info">
+          <div class="trophy-title">
+            ${t.title}
+            ${t.unlocked ? '<span class="badge badge-herbivore">Unlocked</span>' : '<span class="badge">Locked</span>'}
+          </div>
+          <div class="trophy-desc">${t.description}</div>
+          ${t.unlockedAt ? `<div class="trophy-time">Achieved at ${t.unlockedAt}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    modal.style.display = 'flex';
   }
 
   loop(currentTime) {
@@ -186,6 +276,7 @@ class BiospheraApp {
       this.frameCount = 0;
       this.lastFpsUpdate = currentTime;
       this.controls.updateStats(stats);
+      this.achievements.checkMilestones(this.world);
     }
 
     // Record population history in chart
