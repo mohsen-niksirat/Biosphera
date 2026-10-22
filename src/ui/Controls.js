@@ -5,13 +5,15 @@
 import { DNA } from '../genetics/DNA.js';
 
 export class Controls {
-  constructor(world) {
+  constructor(world, soundEngine) {
     this.world = world;
+    this.soundEngine = soundEngine;
     this.onImportDNA = null;
     this.bindEvents();
   }
 
   bindEvents() {
+    // Play / Pause
     const btnPlayPause = document.getElementById('btn-play-pause');
     btnPlayPause?.addEventListener('click', () => {
       this.world.isPaused = !this.world.isPaused;
@@ -20,6 +22,7 @@ export class Controls {
       }
     });
 
+    // Speed Multipliers
     const speedButtons = document.querySelectorAll('.btn-speed');
     speedButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -31,6 +34,40 @@ export class Controls {
       });
     });
 
+    // Sound toggle
+    const btnSound = document.getElementById('btn-sound');
+    btnSound?.addEventListener('click', () => {
+      if (this.soundEngine) {
+        const isAudible = this.soundEngine.toggleMute();
+        btnSound.innerText = isAudible ? '🔊 Sound: On' : '🔇 Sound: Off';
+        btnSound.classList.toggle('active', isAudible);
+        this.showToast(isAudible ? '🎵 Audio soundscape activated' : '🔇 Audio muted');
+      }
+    });
+
+    // Scenario / Preset selector
+    const selectScenario = document.getElementById('select-scenario');
+    selectScenario?.addEventListener('change', (e) => {
+      const preset = e.target.value;
+      if (confirm(`Switch scenario to "${e.target.options[e.target.selectedIndex].text}"? This will reset the population.`)) {
+        this.world.loadPreset(preset);
+        this.showToast(`🌍 Loaded Scenario: ${e.target.options[e.target.selectedIndex].text}`);
+      } else {
+        selectScenario.value = this.world.currentPreset;
+      }
+    });
+
+    // Chart drawer toggle
+    const btnToggleChart = document.getElementById('btn-toggle-chart');
+    const chartDrawer = document.getElementById('chart-drawer');
+    btnToggleChart?.addEventListener('click', () => {
+      if (chartDrawer) {
+        chartDrawer.classList.toggle('open');
+        btnToggleChart.classList.toggle('active');
+      }
+    });
+
+    // Environmental Interventions (God Mode)
     document.getElementById('btn-ice-age')?.addEventListener('click', () => {
       this.world.triggerIceAge();
       this.showToast('❄️ Ice Age triggered! Plant growth frozen.');
@@ -63,6 +100,7 @@ export class Controls {
       }
     });
 
+    // DNA Import Modal
     const modal = document.getElementById('dna-modal');
     const btnOpenImport = document.getElementById('btn-import-dna');
     const btnCloseModal = document.getElementById('close-modal');

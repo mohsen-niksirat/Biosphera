@@ -16,6 +16,7 @@ export class World {
     this.organisms = [];
     this.foods = [];
     this.hazards = [];
+    this.particles = []; // Visual particle bursts (mitosis, eating, deaths)
 
     this.spatialOrganisms = new SpatialHash(90);
     this.spatialFoods = new SpatialHash(70);
@@ -24,6 +25,7 @@ export class World {
     this.maxFoodCap = 450;
     this.timeScale = 1;
     this.isPaused = false;
+    this.currentPreset = 'sanctuary';
 
     this.iceAgeTimer = 0;
     this.radiationTimer = 0;
@@ -33,18 +35,73 @@ export class World {
     this.maxGeneration = 1;
     this.deadLifespans = [];
 
-    this.initDefaultWorld();
+    // Audio callback
+    this.onEvent = null;
+
+    this.loadPreset('sanctuary');
   }
 
-  initDefaultWorld() {
-    for (let i = 0; i < 220; i++) {
-      this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
+  loadPreset(presetName) {
+    this.currentPreset = presetName;
+    this.organisms = [];
+    this.foods = [];
+    this.hazards = [];
+    this.particles = [];
+    this.deadLifespans = [];
+    this.maxGeneration = 1;
+
+    switch (presetName) {
+      case 'wasteland':
+        // Predator Wasteland: Scarce food, carnivores dominate
+        this.foodSpawnRate = 6;
+        this.maxFoodCap = 180;
+        for (let i = 0; i < 80; i++) {
+          this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
+        }
+        for (let i = 0; i < 40; i++) {
+          const dna = new DNA({ diet: 0.7 + Math.random() * 0.3, speed: 3.5 });
+          this.spawnOrganismAt(Math.random() * this.width, Math.random() * this.height, dna);
+        }
+        break;
+
+      case 'radiation':
+        // Radiation Trench: Multiple toxic vents, hyper mutations
+        this.foodSpawnRate = 22;
+        this.maxFoodCap = 400;
+        for (let i = 0; i < 6; i++) {
+          this.hazards.push(new Hazard(Math.random() * this.width, Math.random() * this.height, 70, 50));
+        }
+        for (let i = 0; i < 200; i++) {
+          this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
+        }
+        this.spawnRandomPopulation(40);
+        break;
+
+      case 'glacial':
+        // Glacial Tundra: Low vegetation, high energy requirements
+        this.foodSpawnRate = 8;
+        this.maxFoodCap = 200;
+        this.iceAgeTimer = 99999; // Permanent chill
+        for (let i = 0; i < 120; i++) {
+          this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
+        }
+        this.spawnRandomPopulation(30);
+        break;
+
+      case 'sanctuary':
+      default:
+        // Balanced Primordial Reef
+        this.foodSpawnRate = 18;
+        this.maxFoodCap = 450;
+        this.iceAgeTimer = 0;
+        for (let i = 0; i < 220; i++) {
+          this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
+        }
+        this.hazards.push(new Hazard(this.width * 0.25, this.height * 0.35, 60, 45));
+        this.hazards.push(new Hazard(this.width * 0.75, this.height * 0.65, 75, 45));
+        this.spawnRandomPopulation(35);
+        break;
     }
-
-    this.hazards.push(new Hazard(this.width * 0.25, this.height * 0.35, 60, 45));
-    this.hazards.push(new Hazard(this.width * 0.75, this.height * 0.65, 75, 45));
-
-    this.spawnRandomPopulation(35);
   }
 
   spawnRandomPopulation(count) {
@@ -67,12 +124,29 @@ export class World {
     return org;
   }
 
+  addParticleBurst(x, y, color = '#38bdf8', count = 12) {
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 20 + Math.random() * 60;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        color,
+        size: 1.5 + Math.random() * 2.5,
+        alpha: 1.0,
+        decay: 1.5 + Math.random() * 2
+      });
+    }
+  }
+
   update(rawDt) {
     if (this.isPaused) return;
 
     const dt = Math.min(0.1, rawDt * this.timeScale);
 
-    if (this.iceAgeTimer > 0) this.iceAgeTimer -= dt;
+    if (this.currentPreset !== 'glacial' && this.iceAgeTimer > 0) this.iceAgeTimer -= dt;
     if (this.radiationTimer > 0) this.radiationTimer -= dt;
 
     // 1. REFRESH SPATIAL HASHES
@@ -91,8 +165,8 @@ export class World {
       this.hazards[i].update(dt);
     }
 
-    // 3. SPAWN NATURAL VEGETATION
-    if (this.iceAgeTimer <= 0 && this.foods.length < this.maxFoodCap) {
+    // 3. SPAWN VEGETATION
+    if ((this.currentPreset === 'glacial' || this.iceAgeTimer <= 0) && this.foods.length < this.maxFoodCap) {
       const toSpawn = Math.floor(this.foodSpawnRate * dt + (Math.random() < (this.foodSpawnRate * dt % 1) ? 1 : 0));
       for (let i = 0; i < toSpawn; i++) {
         const cluster = Math.random() < 0.6 && this.foods.length > 0;
@@ -139,6 +213,8 @@ export class World {
       if (offspring) {
         newborns.push(offspring);
         this.totalBorn++;
+        this.addParticleBurst(org.x, org.y, `hsl(${org.dna.colorHue}, 80%, 65%)`, 10);
+        this.onEvent?.('birth');
         if (offspring.generation > this.maxGeneration) {
           this.maxGeneration = offspring.generation;
         }
@@ -148,6 +224,8 @@ export class World {
         this.totalDeaths++;
         this.deadLifespans.push(org.age);
         if (this.deadLifespans.length > 100) this.deadLifespans.shift();
+
+        this.addParticleBurst(org.x, org.y, '#f43f5e', 8);
 
         const meatCount = Math.max(1, Math.floor(org.radius / 5));
         for (let m = 0; m < meatCount; m++) {
@@ -164,19 +242,33 @@ export class World {
       this.organisms.push(newborns[i]);
     }
 
+    // Auto rescue from extinction
     if (this.organisms.length === 0) {
       this.spawnRandomPopulation(15);
+    }
+
+    // 6. UPDATE VISUAL PARTICLES
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.alpha -= p.decay * dt;
+      if (p.alpha <= 0) {
+        this.particles.splice(i, 1);
+      }
     }
   }
 
   triggerIceAge() {
     this.iceAgeTimer = 18;
+    this.onEvent?.('disaster');
   }
 
   triggerFoodSurge() {
     for (let i = 0; i < 150; i++) {
       this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
     }
+    this.onEvent?.('eat');
   }
 
   triggerRadiationFlare() {
@@ -184,6 +276,7 @@ export class World {
     for (const org of this.organisms) {
       org.dna = org.dna.mutate(0.4, 0.6);
     }
+    this.onEvent?.('disaster');
   }
 
   triggerToxicBloom() {
@@ -193,11 +286,13 @@ export class World {
     if (this.hazards.length > 6) {
       this.hazards.shift();
     }
+    this.onEvent?.('disaster');
   }
 
   clearAll() {
     this.organisms = [];
     this.foods = [];
+    this.particles = [];
     this.spawnRandomPopulation(20);
   }
 

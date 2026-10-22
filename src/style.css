@@ -521,3 +521,76 @@ body, html {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+
+/* ==========================================================================
+   Scenario Selector, Sound & Ecology Chart Drawer
+   ========================================================================== */
+.select-scenario {
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.76rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.select-scenario:focus {
+  border-color: var(--primary);
+}
+
+#btn-sound.active, #btn-toggle-chart.active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.chart-drawer {
+  bottom: 5.5rem;
+  left: 1.25rem;
+  width: 360px;
+  padding: 0.85rem;
+  display: none;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chart-drawer.open {
+  display: block;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chart-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.chart-legend {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 0.68rem;
+}
+
+.legend-dot.dot-herb { color: #10b981; }
+.legend-dot.dot-carn { color: #f43f5e; }
+.legend-dot.dot-omni { color: #facc15; }
+.legend-dot.dot-food { color: rgba(16, 185, 129, 0.7); }
+
+#chart-canvas {
+  width: 100%;
+  height: 90px;
+  background: rgba(6, 10, 18, 0.75);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  display: block;
+}

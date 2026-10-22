@@ -1,5 +1,6 @@
 /**
  * Biosphera - Main Application Entrypoint
+ * Enhanced with procedural audio soundscape and real-time population dynamics charts.
  */
 
 import { World } from './engine/World.js';
@@ -7,19 +8,46 @@ import { Camera } from './render/Camera.js';
 import { Renderer } from './render/Renderer.js';
 import { Inspector } from './ui/Inspector.js';
 import { Controls } from './ui/Controls.js';
+import { SoundEngine } from './audio/SoundEngine.js';
+import { PopulationChart } from './ui/PopulationChart.js';
 
 class BiospheraApp {
   constructor() {
     this.canvas = document.getElementById('sim-canvas');
     if (!this.canvas) throw new Error('Could not find #sim-canvas');
 
+    // 1. Audio Engine & Charts
+    this.soundEngine = new SoundEngine();
+    this.chart = new PopulationChart('chart-canvas', 160);
+
+    // 2. World & Camera
     this.world = new World(2400, 1800);
     this.camera = new Camera(this.world.width * 0.5 - 400, this.world.height * 0.5 - 300, 0.75);
     this.renderer = new Renderer(this.canvas, this.camera);
 
+    // 3. UI Modules
     this.inspector = new Inspector('inspector-panel');
-    this.controls = new Controls(this.world);
+    this.controls = new Controls(this.world, this.soundEngine);
 
+    // 4. Hook world sound events
+    this.world.onEvent = (evt) => {
+      switch (evt) {
+        case 'birth':
+          this.soundEngine.playBirth();
+          break;
+        case 'eat':
+          this.soundEngine.playEat();
+          break;
+        case 'attack':
+          this.soundEngine.playAttack();
+          break;
+        case 'disaster':
+          this.soundEngine.playDisaster();
+          break;
+      }
+    };
+
+    // Loop state
     this.lastTime = performance.now();
     this.frameCount = 0;
     this.lastFpsUpdate = performance.now();
@@ -149,17 +177,30 @@ class BiospheraApp {
     const dt = Math.min(0.1, (currentTime - this.lastTime) / 1000);
     this.lastTime = currentTime;
 
+    const stats = this.world.getStats(this.currentFps);
+
+    // Track FPS
     this.frameCount++;
     if (currentTime - this.lastFpsUpdate >= 1000) {
       this.currentFps = Math.round((this.frameCount * 1000) / (currentTime - this.lastFpsUpdate));
       this.frameCount = 0;
       this.lastFpsUpdate = currentTime;
-      this.controls.updateStats(this.world.getStats(this.currentFps));
+      this.controls.updateStats(stats);
     }
 
+    // Record population history in chart
+    this.chart.record(stats, currentTime);
+
+    // 1. Simulation Step
     this.world.update(dt);
+
+    // 2. Camera tracking
     this.camera.update(this.canvas.width, this.canvas.height);
+
+    // 3. Render Viewport
     this.renderer.render(this.world);
+
+    // 4. Update Microscope Inspector
     this.inspector.update();
 
     requestAnimationFrame((t) => this.loop(t));

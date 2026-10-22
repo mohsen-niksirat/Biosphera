@@ -22,6 +22,13 @@ Unlike traditional rule-based cellular automata or particle visualizers, each or
   - **Live Neural Visualizer:** Animated graph of inputs, hidden neurons, and outputs glowing as synapses fire.
   - **Genetics & Lineage:** Generation number, age, reproductive count, diet classification (Herbivore 🌿, Carnivore 🥩, Omnivore 🌾).
   - **Target Tracking Camera:** Smoothly follows your chosen specimen across the biome.
+- **📈 Lotka-Volterra Ecology Chart:** Real-time scrolling population dynamics graph displaying predator-prey oscillations and vegetation abundance.
+- **🔊 Procedural WebAudio Soundscape:** Synthesizes an ambient deep-ocean drone and organic SFX (mitosis chimes, feeding bubble pops, predatory bites, disaster rumbles) without loading external audio assets.
+- **🌍 Biome Starting Scenarios:**
+  - **🏝️ Primordial Reef:** Balanced baseline conditions for peaceful evolutionary growth.
+  - **🥩 Predator Wasteland:** Scarce food and high aggression, testing predatory hunting instincts.
+  - **☢️ Radiation Trench:** Hyper-mutation rates and toxic vents for accelerated evolutionary leaps.
+  - **❄️ Glacial Tundra:** Sub-zero freeze testing metabolic fuel conservation and survival.
 - **⚡ Spatial Hash Engine ($O(1)$ Queries):** Optimized spatial partitioning grid allows hundreds of entities to interact and sense at silky-smooth 60 FPS without $O(N^2)$ bottlenecks.
 - **🌋 God Mode Interventions:**
   - **❄️ Ice Age:** Freezes vegetation growth, putting high metabolic stress on organisms.
@@ -42,23 +49,26 @@ Biosphera/
 ├── src/
 │   ├── style.css           # Dark theme design system & layout
 │   ├── main.js             # Simulation loop & event dispatcher
+│   ├── audio/
+│   │   └── SoundEngine.js  # Procedural WebAudio synth & soundscape
 │   ├── brain/
 │   │   └── NeuralNet.js    # Multi-layer perceptron with fast tanh & mutation
 │   ├── genetics/
 │   │   └── DNA.js          # Genetic encoding, crossover, & serialization
 │   ├── engine/
 │   │   ├── SpatialHash.js  # High-performance O(1) neighbor search
-│   │   └── World.js        # Ecosystem rules, disasters, & population stats
+│   │   └── World.js        # Ecosystem rules, disasters, & presets
 │   ├── entities/
 │   │   ├── Organism.js     # Living agent: sense, think, act, reproduce, die
 │   │   ├── Food.js         # Plant nutrition & rotting meat pellets
 │   │   └── Hazard.js       # Toxic pools & damage areas
 │   ├── render/
 │   │   ├── Camera.js       # Pan, zoom, & follow-target viewport
-│   │   └── Renderer.js     # Canvas 2D rendering with dynamic flagella animation
+│   │   └── Renderer.js     # Canvas 2D rendering with multi-joint flagella & plankton
 │   └── ui/
 │       ├── Inspector.js    # Microscope panel & live neural visualizer
-│       └── Controls.js     # Top stats HUD, speed control, & God mode
+│       ├── Controls.js     # Top stats HUD, speed control, & God mode
+│       └── PopulationChart.js # Real-time predator-prey dynamics chart
 └── README.md
 ```
 
@@ -92,15 +102,8 @@ Because Biosphera is built with pure modern ES modules, you don't even need to r
 | **Follow Target** | Click "🎯 Follow" inside the Microscope panel |
 | **Simulation Speed** | Toggle `1x`, `2x`, `5x`, or `10x` in the bottom bar |
 | **Pause / Resume** | Click `⏸ Pause` button |
-
----
-
-## 🔮 Future Roadmap
-
-- [ ] **WebGPU Compute Shaders:** Scaling from 500 to 20,000+ organisms concurrently.
-- [ ] **Predator-Prey Arena:** Automated tournament mode pitting different DNA breeds against each other.
-- [ ] **Sexual Reproduction:** DNA crossover between two consenting mature organisms.
-- [ ] **Environmental Obstacles:** Procedural terrain, ocean currents, and caves.
+| **Sound** | Toggle sound on/off with the `🔊 Sound` button in the top bar |
+| **Ecology Chart** | Toggle the Lotka-Volterra graph with the `📈 Dynamics` button |
 
 ---
 

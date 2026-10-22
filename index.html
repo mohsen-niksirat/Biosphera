@@ -48,6 +48,14 @@
       </div>
 
       <div class="top-actions">
+        <select id="select-scenario" class="select-scenario" title="Choose evolutionary starting condition">
+          <option value="sanctuary">🏝️ Primordial Reef</option>
+          <option value="wasteland">🥩 Predator Wasteland</option>
+          <option value="radiation">☢️ Radiation Trench</option>
+          <option value="glacial">❄️ Glacial Tundra</option>
+        </select>
+        <button id="btn-sound" class="btn btn-secondary btn-sm" title="Toggle procedural soundscape">🔇 Sound: Off</button>
+        <button id="btn-toggle-chart" class="btn btn-secondary btn-sm" title="Toggle Lotka-Volterra ecology chart">📈 Dynamics</button>
         <button id="btn-import-dna" class="btn btn-secondary btn-sm">📥 Import DNA</button>
       </div>
     </header>
@@ -63,6 +71,20 @@
 
       <!-- Right Floating Inspector (Microscope) -->
       <aside id="inspector-panel" class="floating-panel inspector-panel"></aside>
+
+      <!-- Bottom-Left Population Dynamics Drawer -->
+      <div id="chart-drawer" class="floating-panel chart-drawer">
+        <div class="chart-header">
+          <span>📈 Population Dynamics (Lotka-Volterra)</span>
+          <div class="chart-legend">
+            <span class="legend-dot dot-herb">🌿 Herbivores</span>
+            <span class="legend-dot dot-carn">🥩 Carnivores</span>
+            <span class="legend-dot dot-omni">🌾 Omnivores</span>
+            <span class="legend-dot dot-food">🍃 Plants</span>
+          </div>
+        </div>
+        <canvas id="chart-canvas" width="340" height="90"></canvas>
+      </div>
 
       <!-- Bottom Floating Toolbar (Playback & God Mode) -->
       <nav class="floating-bar bottom-bar">

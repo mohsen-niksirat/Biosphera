@@ -1,5 +1,6 @@
 /**
  * Biosphera - High Performance Canvas 2D Renderer
+ * Enhanced with multi-jointed swimming spines, ambient marine plankton, and particle bursts.
  */
 
 export class Renderer {
@@ -12,6 +13,19 @@ export class Renderer {
 
     this.selectedOrganism = null;
     this.hoveredOrganism = null;
+
+    // Ambient floating plankton/dust in water
+    this.ambientParticles = [];
+    for (let i = 0; i < 90; i++) {
+      this.ambientParticles.push({
+        x: Math.random() * 2400,
+        y: Math.random() * 1800,
+        r: 0.8 + Math.random() * 1.5,
+        speed: 0.2 + Math.random() * 0.4,
+        angle: Math.random() * Math.PI * 2,
+        alpha: 0.15 + Math.random() * 0.25
+      });
+    }
   }
 
   render(world) {
@@ -20,7 +34,7 @@ export class Renderer {
     const ctx = this.ctx;
 
     // 1. CLEAR & BACKGROUND
-    ctx.fillStyle = '#060a12';
+    ctx.fillStyle = '#050914';
     ctx.fillRect(0, 0, width, height);
 
     ctx.save();
@@ -30,7 +44,10 @@ export class Renderer {
     // 2. WORLD BOUNDARY & GRID
     this.drawWorldGrid(world);
 
-    // 3. HAZARDS
+    // 3. AMBIENT DRIFTING PLANKTON
+    this.drawAmbientPlankton(world);
+
+    // 4. HAZARDS
     for (let i = 0; i < world.hazards.length; i++) {
       const h = world.hazards[i];
       const pulse = 1 + Math.sin(h.pulsePhase) * 0.08;
@@ -51,7 +68,7 @@ export class Renderer {
       ctx.fill();
     }
 
-    // 4. FOOD
+    // 5. FOOD
     for (let i = 0; i < world.foods.length; i++) {
       const f = world.foods[i];
       if (!this.isInView(f.x, f.y, f.radius + 10)) continue;
@@ -61,20 +78,32 @@ export class Renderer {
       if (f.type === 'plant') {
         ctx.fillStyle = '#10b981';
         ctx.shadowColor = '#10b981';
-        ctx.shadowBlur = 4;
+        ctx.shadowBlur = 5;
       } else {
         ctx.fillStyle = '#f43f5e';
         ctx.shadowColor = '#f43f5e';
-        ctx.shadowBlur = 5;
+        ctx.shadowBlur = 6;
       }
       ctx.fill();
       ctx.shadowBlur = 0;
     }
 
-    // 5. ORGANISMS
+    // 6. BURST PARTICLES
+    for (let i = 0; i < world.particles.length; i++) {
+      const p = world.particles[i];
+      if (!this.isInView(p.x, p.y, p.size)) continue;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, p.alpha);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+
+    // 7. ORGANISMS
     for (let i = 0; i < world.organisms.length; i++) {
       const org = world.organisms[i];
-      if (!this.isInView(org.x, org.y, org.dna.sensorRange + 20)) continue;
+      if (!this.isInView(org.x, org.y, org.dna.sensorRange + 25)) continue;
 
       const isSelected = this.selectedOrganism === org;
       const isHovered = this.hoveredOrganism === org;
@@ -84,8 +113,8 @@ export class Renderer {
 
     ctx.restore();
 
-    // 6. ATMOSPHERIC OVERLAYS
-    if (world.iceAgeTimer > 0) {
+    // 8. ATMOSPHERIC OVERLAYS
+    if (world.currentPreset === 'glacial' || world.iceAgeTimer > 0) {
       ctx.fillStyle = 'rgba(186, 230, 253, 0.12)';
       ctx.fillRect(0, 0, width, height);
     } else if (world.radiationTimer > 0) {
@@ -94,9 +123,28 @@ export class Renderer {
     }
   }
 
+  drawAmbientPlankton(world) {
+    const ctx = this.ctx;
+    ctx.fillStyle = '#38bdf8';
+
+    for (let i = 0; i < this.ambientParticles.length; i++) {
+      const pt = this.ambientParticles[i];
+      pt.x = (pt.x + Math.cos(pt.angle) * pt.speed + world.width) % world.width;
+      pt.y = (pt.y + Math.sin(pt.angle) * pt.speed + world.height) % world.height;
+
+      if (!this.isInView(pt.x, pt.y, pt.r)) continue;
+
+      ctx.globalAlpha = pt.alpha;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+  }
+
   drawWorldGrid(world) {
     const ctx = this.ctx;
-    ctx.strokeStyle = 'rgba(30, 41, 59, 0.6)';
+    ctx.strokeStyle = 'rgba(30, 41, 59, 0.5)';
     ctx.lineWidth = 1;
 
     const gridSize = 100;
@@ -138,9 +186,9 @@ export class Renderer {
         org.heading + org.dna.sensorFov * 0.5
       );
       ctx.closePath();
-      ctx.fillStyle = isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.06)';
+      ctx.fillStyle = isSelected ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.05)';
       ctx.fill();
-      ctx.strokeStyle = isSelected ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.15)';
+      ctx.strokeStyle = isSelected ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -161,7 +209,7 @@ export class Renderer {
     if (isSelected) {
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 1.5;
-      const reticleR = org.radius + 12;
+      const reticleR = org.radius + 14;
       ctx.beginPath();
       ctx.arc(0, 0, reticleR, 0, Math.PI * 2);
       ctx.stroke();
@@ -176,20 +224,26 @@ export class Renderer {
 
     ctx.rotate(org.heading);
 
-    // Tail / Flagella
-    const tailLength = org.radius * 1.6;
-    const wiggle = Math.sin(org.tailPhase) * (org.radius * 0.5);
+    // Dynamic Multi-Segment Undulating Spine (Tadpole / Microbe Swimming)
+    const spineSegments = 4;
+    const segLength = (org.radius * 1.8) / spineSegments;
+    const baseWiggle = org.radius * 0.45;
 
     ctx.beginPath();
-    ctx.moveTo(-org.radius * 0.7, 0);
-    ctx.quadraticCurveTo(
-      -org.radius - tailLength * 0.5,
-      wiggle * 0.6,
-      -org.radius - tailLength,
-      wiggle
-    );
-    ctx.strokeStyle = `hsla(${org.dna.colorHue}, 70%, 60%, 0.6)`;
+    ctx.moveTo(-org.radius * 0.6, 0);
+
+    let curX = -org.radius * 0.6;
+    for (let s = 1; s <= spineSegments; s++) {
+      const nextX = curX - segLength;
+      const phaseOffset = s * 0.75;
+      const wY = Math.sin(org.tailPhase + phaseOffset) * (baseWiggle * (s / spineSegments));
+      ctx.lineTo(nextX, wY);
+      curX = nextX;
+    }
+
+    ctx.strokeStyle = `hsla(${org.dna.colorHue}, 75%, 60%, 0.65)`;
     ctx.lineWidth = Math.max(1.5, org.radius * 0.22);
+    ctx.lineCap = 'round';
     ctx.stroke();
 
     // Body
@@ -201,14 +255,14 @@ export class Renderer {
     ctx.fill();
 
     ctx.strokeStyle = org.dna.diet > 0.2 ? '#f43f5e' : (org.dna.diet < -0.2 ? '#10b981' : '#facc15');
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.6;
     ctx.stroke();
 
     // Energy Ring
     ctx.beginPath();
     const energyRatio = Math.min(1.0, org.energy / org.dna.reproduceThreshold);
     ctx.arc(0, 0, org.radius * 0.5, 0, Math.PI * 2 * energyRatio);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.lineWidth = 2;
     ctx.stroke();
 
