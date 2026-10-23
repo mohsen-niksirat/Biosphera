@@ -30,13 +30,13 @@ export class Organism {
     this.childrenCount = 0;
     this.reproduceCooldown = 6.0; // Must mature before reproducing
 
-    this.latestInputs = new Float32Array(8);
+    this.latestInputs = new Float32Array(9);
     this.latestOutputs = new Float32Array(4);
     this.nearestTarget = null;
     this.tailPhase = Math.random() * Math.PI * 2;
   }
 
-  update(dt, worldWidth, worldHeight, nearbyFoods, nearbyOrganisms, nearbyHazards) {
+  update(dt, worldWidth, worldHeight, nearbyFoods, nearbyOrganisms, nearbyHazards, env = {}) {
     if (this.isDead) return null;
 
     this.age += dt;
@@ -46,7 +46,7 @@ export class Organism {
     this.tailPhase += dt * (2 + Math.hypot(this.vx, this.vy) * (2.5 / 60));
 
     // 1. SENSE
-    const inputs = this.sense(nearbyFoods, nearbyOrganisms, nearbyHazards);
+    const inputs = this.sense(nearbyFoods, nearbyOrganisms, nearbyHazards, env);
     this.latestInputs.set(inputs);
 
     // 2. THINK
@@ -93,7 +93,7 @@ export class Organism {
     const frameSpeed = currentSpeed / 60;
     const kineticCost = (frameSpeed * frameSpeed * 0.04) * (this.dna.size / 10);
     const sensorCost = (this.dna.sensorRange / 200) * 0.15;
-    const totalBurn = (basalCost + kineticCost + sensorCost) * dt;
+    const totalBurn = (basalCost + kineticCost + sensorCost) * dt * (env.metabolismMult ?? 1);
 
     this.energy -= totalBurn;
 
@@ -107,7 +107,7 @@ export class Organism {
 
     // 5. INTERACT
     if (biteAction > 0) {
-      this.performFeeding(nearbyFoods, nearbyOrganisms);
+      this.performFeeding(nearbyFoods, nearbyOrganisms, env);
     }
 
     // 6. AGEING
@@ -142,6 +142,17 @@ export class Organism {
       }
 
       if (localCrowding < 6) {
+        // Sexual mode: seek a willing nearby mate; parthenogenesis only as a
+        // low-population fallback so the biome never dies out by chance.
+        if (env.sexual) {
+          const partner = this.findMate(nearbyOrganisms);
+          if (partner) {
+            return this.mateWith(partner);
+          }
+          if ((env.population ?? Infinity) > 12) {
+            return null;
+          }
+        }
         return this.reproduce();
       }
     }
@@ -149,8 +160,50 @@ export class Organism {
     return null;
   }
 
-  sense(foods, organisms, hazards) {
-    const inputs = [0, 0, 0, 0, 0, 0, 0, 1.0];
+  findMate(nearbyOrganisms) {
+    let best = null;
+    let bestDist = Infinity;
+    for (const other of nearbyOrganisms) {
+      if (other.id === this.id || other.isDead) continue;
+      if (other.age < 6.0 || other.reproduceCooldown > 0) continue;
+      if (other.energy < other.dna.reproduceThreshold * 0.55) continue;
+      const d = Math.hypot(other.x - this.x, other.y - this.y);
+      if (d < this.radius + other.radius + 30 && d < bestDist) {
+        bestDist = d;
+        best = other;
+      }
+    }
+    return best;
+  }
+
+  mateWith(partner) {
+    const cooldown = 9.0 + Math.random() * 4.0;
+    this.reproduceCooldown = cooldown;
+    partner.reproduceCooldown = cooldown;
+
+    const contribution = 0.3;
+    const childEnergy = (this.energy + partner.energy) * contribution * 0.9;
+    this.energy *= 1 - contribution;
+    partner.energy *= 1 - contribution;
+    this.childrenCount++;
+    partner.childrenCount++;
+
+    const childDNA = DNA.crossover(this.dna, partner.dna).mutate(0.08, 0.25);
+    const spawnDist = this.radius + childDNA.size + 4;
+    const angle = Math.random() * Math.PI * 2;
+
+    return new Organism(
+      this.x + Math.cos(angle) * spawnDist,
+      this.y + Math.sin(angle) * spawnDist,
+      childDNA,
+      this.generation + 1,
+      this.id,
+      childEnergy
+    );
+  }
+
+  sense(foods, organisms, hazards, env = {}) {
+    const inputs = [0, 0, 0, 0, 0, 0, 0, 1.0, 0];
     this.nearestTarget = null;
 
     let closestFoodDist = Infinity;
@@ -238,11 +291,13 @@ export class Organism {
     inputs[5] = closestHazardDist < 120 ? (1 - closestHazardDist / 120) : 0;
     inputs[6] = Math.min(1.0, this.energy / this.dna.reproduceThreshold);
     inputs[7] = 1.0;
+    // Pheromone scent (food attracts, death repels) — 9th neural input
+    inputs[8] = env.pheromones ? env.pheromones.sample(this.x, this.y) : 0;
 
     return inputs;
   }
 
-  performFeeding(nearbyFoods, nearbyOrganisms) {
+  performFeeding(nearbyFoods, nearbyOrganisms, env = {}) {
     const mouthReach = this.radius + 6;
 
     for (let i = 0; i < nearbyFoods.length; i++) {
@@ -262,6 +317,7 @@ export class Organism {
         if (food.type === 'plant') this.plantsEaten++;
         else this.meatEaten++;
         food.energy = 0;
+        env.onEat?.(this, food.type);
         break;
       }
     }
@@ -282,6 +338,7 @@ export class Organism {
             other.isDead = true;
             this.kills++;
           }
+          env.onEat?.(this, 'bite');
           break;
         }
       }

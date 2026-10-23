@@ -11,13 +11,21 @@
 
 Unlike traditional rule-based cellular automata or particle visualizers, each organism in **Biosphera** possesses:
 1. **Digital Genome (DNA):** Encodes physical traits (mass, top speed, sensory range, field-of-view, dietary orientation) and metabolic rates.
-2. **Micro Neural Network Brain:** A fast feedforward perceptron ($8 \text{ inputs} \rightarrow 7 \text{ hidden} \rightarrow 4 \text{ outputs}$) that processes live sensory stimuli (distance and angle to plants, prey, predators, and toxic hazards) to steer and accelerate.
+2. **Micro Neural Network Brain:** A fast feedforward perceptron ($9 \text{ inputs} \rightarrow 7 \text{ hidden} \rightarrow 4 \text{ outputs}$) that processes live sensory stimuli (distance and angle to plants, prey, predators, and toxic hazards, plus ambient chemical scent) to steer and accelerate.
 3. **Emergent Natural Selection:** No behaviors are hardcoded. In early generations, organisms wander randomly; within 10–20 generations, smart grazing, predator evasion, ambush hunting, and schooling behaviors emerge spontaneously.
 
 ---
 
 ## ✨ Key Features
 
+- **🧪 Chemical Pheromone Trails (9th Neural Input):** Organisms deposit scent while feeding, breeding and dying into a diffusing two-channel field (food/danger). Newborn brains receive a scent input, so trail-following to feeding grounds and avoiding death zones evolve emergently.
+- **🌊 Ocean Current Flow Field:** A slowly evolving gyre system pushes organisms and drifting food through the water — an ever-changing environmental pressure. Toggle in God Mode.
+- **🌦️ Four-Season Cycle:** Spring → Summer → Autumn → Winter layered on the day/night cycle; each season scales vegetation growth and metabolic burn, forcing periodic adaptation. Lock any season or let it cycle automatically.
+- **💑 Sexual Reproduction Mode:** Toggle parthenogenesis ⟷ mating. With mating enabled, offspring require a willing mature partner nearby and inherit a recombined genome (each trait from either parent + whole-neuron brain crossover) plus mutation. Auto-fallback to cloning below 12 organisms prevents extinction spirals.
+- **🧫 Automatic Species Detection & Naming:** Living organisms are genetically clustered every second and given stable Latin-esque binomials (e.g. *Noctvis*, *Ondapod*). View the full species census in the Lineage modal; the inspector shows each specimen's species.
+- **🧬 Genome Evolution Trends Chart:** Scrolling graph of average size, speed, vision, diet niche and generation over time — visualizing directional selection as it happens.
+- **🏅 Hall of Records:** Persistent all-time records (longest lived, most offspring, deadliest hunter, peak population...) inside the Trophies modal.
+- **💾 Ecosystem Save / Load / Autosave:** Serialize the entire biosphere (every organism's full DNA + brain, food, hazards, timers) to browser storage. Manual save/load buttons + hotkeys (S/O) and silent autosave every 90 seconds.
 - **🌳 Phylogenetic Tree & Species Cladogram:** Interactive evolutionary tree mapping all active species lineages and generational branching. Click any node to teleport camera to that family line.
 - **📸 High-Res Snapshot & Social Poster Exporter:** Captures the current canvas frame with clean metadata badges (Generation, Population, Scenario, Repo link) and downloads as high-res PNG.
 - **🌙 Circadian Day/Night & Bioluminescent Deep:** Smooth diurnal transitions through daylight, twilight, and deep night. At night, photosynthesis pauses while organisms and vegetation emanate glowing bioluminescent neon halos and trails!
@@ -65,8 +73,17 @@ Biosphera/
 │   ├── genetics/
 │   │   └── DNA.js          # Genetic encoding, crossover, & serialization
 │   ├── engine/
-│   │   ├── SpatialHash.js  # High-performance O(1) neighbor search
-│   │   └── World.js        # Ecosystem rules, disasters, & presets
+│   │   ├── SpatialHash.js      # High-performance O(1) neighbor search
+│   │   ├── World.js            # Ecosystem rules, disasters, & presets
+│   │   ├── FlowField.js        # Ocean current gyre system
+│   │   ├── PheromoneField.js   # Two-channel chemical scent grid
+│   │   ├── SeasonCycle.js      # Four-season growth/metabolism cycle
+│   │   ├── SpeciesRegistry.js  # Genetic clustering & species naming
+│   │   ├── HallOfFame.js       # Persistent all-time records
+│   │   ├── Achievements.js     # Unlockable evolutionary trophies
+│   │   ├── DayNightCycle.js    # Circadian lighting & bioluminescence
+│   │   ├── ArenaTrial.js       # 3-phase fitness benchmark coliseum
+│   │   └── Cladogram.js        # Phylogenetic lineage visualization
 │   ├── entities/
 │   │   ├── Organism.js     # Living agent: sense, think, act, reproduce, die
 │   │   ├── Food.js         # Plant nutrition & rotting meat pellets
@@ -75,9 +92,13 @@ Biosphera/
 │   │   ├── Camera.js       # Pan, zoom, & follow-target viewport
 │   │   └── Renderer.js     # Canvas 2D rendering with multi-joint flagella & plankton
 │   └── ui/
-│       ├── Inspector.js    # Microscope panel & live neural visualizer
-│       ├── Controls.js     # Top stats HUD, speed control, & God mode
-│       └── PopulationChart.js # Real-time predator-prey dynamics chart
+│       ├── Inspector.js       # Microscope panel & live neural visualizer
+│       ├── Controls.js        # Top stats HUD, speed control, & God mode
+│       ├── PopulationChart.js # Real-time predator-prey dynamics chart
+│       ├── EvolutionChart.js  # Genome trait drift over time
+│       ├── GeneLab.js         # Custom organism designer
+│       ├── GodBrush.js        # Terraforming brushes & shockwaves
+│       └── Snapshot.js        # PNG poster exporter
 └── README.md
 ```
 

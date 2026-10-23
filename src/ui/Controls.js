@@ -9,6 +9,9 @@ export class Controls {
     this.world = world;
     this.soundEngine = soundEngine;
     this.onImportDNA = null;
+    this.onSeasonCycle = null;
+    this.onSave = null;
+    this.onLoad = null;
     this.bindEvents();
   }
 
@@ -87,6 +90,33 @@ export class Controls {
       this.world.triggerToxicBloom();
       this.showToast('🧪 New toxic thermal vent formed.');
     });
+
+    // Water currents toggle
+    const btnCurrents = document.getElementById('btn-currents');
+    btnCurrents?.addEventListener('click', () => {
+      this.world.currentStrength = this.world.currentStrength > 0 ? 0 : 0.9;
+      btnCurrents.classList.toggle('active', this.world.currentStrength > 0);
+      this.showToast(this.world.currentStrength > 0 ? '🌊 Ocean currents unleashed!' : '🪞 Water stilled.');
+    });
+
+    // Sexual reproduction toggle
+    const btnMating = document.getElementById('btn-mating');
+    btnMating?.addEventListener('click', () => {
+      this.world.sexualReproduction = !this.world.sexualReproduction;
+      btnMating.classList.toggle('active', this.world.sexualReproduction);
+      this.showToast(this.world.sexualReproduction
+        ? '💑 Sexual reproduction ON — genomes recombine with a mate.'
+        : '🧬 Parthenogenesis restored — offspring are cloned+mutated.');
+    });
+
+    // Season cycle (delegated to main app)
+    document.getElementById('btn-season')?.addEventListener('click', () => {
+      this.onSeasonCycle?.();
+    });
+
+    // Ecosystem save / load (delegated to main app)
+    document.getElementById('btn-save')?.addEventListener('click', () => this.onSave?.());
+    document.getElementById('btn-load')?.addEventListener('click', () => this.onLoad?.());
 
     document.getElementById('btn-spawn-more')?.addEventListener('click', () => {
       this.world.spawnRandomPopulation(20);

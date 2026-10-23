@@ -29,7 +29,7 @@ export class Renderer {
     }
   }
 
-  render(world, godBrush = null, dayNight = null) {
+  render(world, godBrush = null, dayNight = null, seasonTint = null) {
     const width = this.canvas.width;
     const height = this.canvas.height;
     const ctx = this.ctx;
@@ -154,6 +154,11 @@ export class Renderer {
       ctx.fillRect(0, 0, width, height);
     }
 
+    if (seasonTint) {
+      ctx.fillStyle = seasonTint;
+      ctx.fillRect(0, 0, width, height);
+    }
+
     if (world.currentPreset === 'glacial' || world.iceAgeTimer > 0) {
       ctx.fillStyle = 'rgba(186, 230, 253, 0.12)';
       ctx.fillRect(0, 0, width, height);
@@ -166,11 +171,20 @@ export class Renderer {
   drawAmbientPlankton(world, isBioluminescent) {
     const ctx = this.ctx;
     ctx.fillStyle = isBioluminescent ? '#38bdf8' : 'rgba(56, 189, 248, 0.7)';
+    const flow = world.flow;
 
     for (let i = 0; i < this.ambientParticles.length; i++) {
       const pt = this.ambientParticles[i];
-      pt.x = (pt.x + Math.cos(pt.angle) * pt.speed + world.width) % world.width;
-      pt.y = (pt.y + Math.sin(pt.angle) * pt.speed + world.height) % world.height;
+
+      if (flow) {
+        // Plankton rides the water currents
+        const f = flow.sample(pt.x, pt.y);
+        pt.x = (pt.x + f.vx * 0.05 + world.width) % world.width;
+        pt.y = (pt.y + f.vy * 0.05 + world.height) % world.height;
+      } else {
+        pt.x = (pt.x + Math.cos(pt.angle) * pt.speed + world.width) % world.width;
+        pt.y = (pt.y + Math.sin(pt.angle) * pt.speed + world.height) % world.height;
+      }
 
       if (!this.isInView(pt.x, pt.y, pt.r)) continue;
 

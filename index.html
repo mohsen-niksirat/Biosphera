@@ -8,7 +8,6 @@
   <meta name="description" content="In-browser digital life simulation powered by genetic algorithms, neural networks, and natural selection." />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧬</text></svg>" />
   <link rel="manifest" href="./manifest.json" />
-  <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
   <div id="app">
@@ -68,6 +67,9 @@
         <button id="btn-toggle-chart" class="btn btn-secondary btn-sm" title="Toggle Lotka-Volterra ecology chart">📈 Dynamics</button>
         <button id="btn-import-dna" class="btn btn-secondary btn-sm" title="Import DNA string">📥 DNA</button>
         <button id="btn-lineage" class="btn btn-secondary btn-sm" title="View phylogenetic tree">🌳 Lineage</button>
+        <button id="btn-toggle-trends" class="btn btn-secondary btn-sm" title="Genome evolution trends">🧬 Trends</button>
+        <button id="btn-save" class="btn btn-secondary btn-sm" title="Save ecosystem (S)">💾</button>
+        <button id="btn-load" class="btn btn-secondary btn-sm" title="Load ecosystem (O)">📂</button>
         <button id="btn-snapshot" class="btn btn-secondary btn-sm" title="Capture PNG snapshot">📸</button>
         <button id="btn-help" class="btn btn-secondary btn-sm" title="Science guide & hotkeys">❓</button>
         <button id="btn-fullscreen" class="btn btn-secondary btn-sm" title="Toggle Fullscreen">⛶</button>
@@ -101,6 +103,15 @@
           </div>
         </div>
         <canvas id="chart-canvas" width="340" height="90"></canvas>
+      </div>
+
+      <!-- Top-Right Evolution Trends Drawer -->
+      <div id="trends-drawer" class="floating-panel trends-drawer">
+        <div class="chart-header">
+          <span>🧬 Genome Evolution Trends</span>
+          <div class="chart-legend" id="trends-legend"></div>
+        </div>
+        <canvas id="evo-chart-canvas" width="340" height="110"></canvas>
       </div>
 
       <!-- Toggle Bottom Toolbar Button (for mobile / clean view) -->
@@ -137,6 +148,9 @@
           <button id="btn-ice-age" class="btn btn-tool" title="Freeze vegetation growth & stress metabolism">❄️ Ice Age</button>
           <button id="btn-radiation" class="btn btn-tool" title="Cosmic mutation flare">☢️ Radiation</button>
           <button id="btn-toxic-vent" class="btn btn-tool" title="Spawn a hazardous thermal vent">🧪 Toxic Vent</button>
+          <button id="btn-currents" class="btn btn-tool" title="Toggle ocean currents that push everything">🌊 Currents</button>
+          <button id="btn-season" class="btn btn-tool" title="Cycle seasons (Auto → Spring → Summer → Autumn → Winter)">🌱 Spring</button>
+          <button id="btn-mating" class="btn btn-tool" title="Toggle sexual reproduction with genome recombination">💑 Mating</button>
           <button id="btn-spawn-more" class="btn btn-tool" title="Inject 20 new genesis organisms">+20 Genesis</button>
           <button id="btn-reset-world" class="btn btn-danger btn-sm" title="Wipe & restart">🔄 Reset</button>
         </div>
@@ -243,6 +257,8 @@
         </div>
         <div class="modal-body">
           <div id="trophies-list" class="trophies-list"></div>
+          <h4 class="records-title">🏅 Hall of Records</h4>
+          <div id="records-list" class="records-list"></div>
         </div>
       </div>
     </div>
@@ -259,6 +275,8 @@
           <div class="cladogram-container">
             <canvas id="cladogram-canvas" width="600" height="340"></canvas>
           </div>
+          <h4 class="records-title">🧫 Living Species</h4>
+          <div id="species-list" class="species-list"></div>
         </div>
       </div>
     </div>
@@ -281,6 +299,10 @@
               <p>Predators consume herbivores; as prey dwindles, predators starve; as predator counts drop, herbivores rebound.</p>
             </div>
             <div class="guide-section">
+              <h4>🌊 Currents, Seasons & Scent</h4>
+              <p>A slowly evolving flow field pushes everything through the water. Four seasons scale vegetation growth and metabolic burn. Organisms leave chemical trails while feeding and dying; descendants with a 9th "scent" neural input can evolve trail-following and danger avoidance.</p>
+              <h4>💑 Sexual Reproduction</h4>
+              <p>Toggle Mating in God Mode: offspring then require a willing partner nearby and inherit a recombined genome (each trait from either parent, whole neurons per parent) plus mutation. Parthenogenesis returns automatically when the population collapses below 12.</p>
               <h4>⌨️ Keyboard Shortcuts</h4>
               <ul class="hotkeys-list">
                 <li><kbd>Space</kbd> <span>Pause / Resume</span></li>
@@ -292,6 +314,8 @@
                 <li><kbd>L</kbd> <span>Open Gene Lab</span></li>
                 <li><kbd>T</kbd> <span>Open Trophies</span></li>
                 <li><kbd>P</kbd> <span>Capture Snapshot</span></li>
+                <li><kbd>S</kbd> <span>Save Ecosystem</span></li>
+                <li><kbd>O</kbd> <span>Load Ecosystem</span></li>
                 <li><kbd>F</kbd> <span>Toggle Fullscreen</span></li>
               </ul>
             </div>

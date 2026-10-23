@@ -47,6 +47,41 @@ export class DNA {
     });
   }
 
+  /**
+   * Sexual recombination: each trait is picked from either parent, and the brain
+   * inherits whole neurons (weight rows) from a single parent to keep circuits coherent.
+   */
+  static crossover(a, b) {
+    const pick = (va, vb) => (Math.random() < 0.5 ? va : vb);
+
+    let brain;
+    if (a.brain.topology.inputs === b.brain.topology.inputs &&
+        a.brain.topology.outputs === b.brain.topology.outputs) {
+      const weights = a.brain.weights.map((layer, l) =>
+        layer.map((_, j) => (Math.random() < 0.5 ? a.brain.weights[l][j] : b.brain.weights[l][j]))
+          .map((row) => Float32Array.from(row))
+      );
+      const biases = a.brain.biases.map((layer, l) =>
+        layer.map((_, j) => (Math.random() < 0.5 ? a.brain.biases[l][j] : b.brain.biases[l][j]))
+      );
+      brain = new NeuralNet(a.brain.topology, weights, biases);
+    } else {
+      brain = a.brain.clone(); // Mismatched topologies (e.g. legacy 8-input DNA): fall back to one parent
+    }
+
+    return new DNA({
+      size: pick(a.size, b.size),
+      speed: pick(a.speed, b.speed),
+      sensorRange: pick(a.sensorRange, b.sensorRange),
+      sensorFov: pick(a.sensorFov, b.sensorFov),
+      colorHue: pick(a.colorHue, b.colorHue),
+      diet: pick(a.diet, b.diet),
+      reproduceThreshold: pick(a.reproduceThreshold, b.reproduceThreshold),
+      gestationShare: pick(a.gestationShare, b.gestationShare),
+      brain
+    });
+  }
+
   serialize() {
     const payload = {
       s: Number(this.size.toFixed(2)),

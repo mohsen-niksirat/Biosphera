@@ -119,8 +119,8 @@ export class Inspector {
         <span class="stat-val">${Math.round(org.dna.sensorRange)}px @ ${(org.dna.sensorFov * 180 / Math.PI).toFixed(0)}°</span>
       </div>
       <div class="stat-item" style="grid-column: span 2;">
-        <label>Lineage / Origin</label>
-        <span class="stat-val text-muted">${org.parentId ? `Descendant of #${org.parentId}` : '✨ Genesis Ancestor (Generation 1)'}</span>
+        <label>Species / Lineage</label>
+        <span class="stat-val">${org.speciesName ? `<em>${org.speciesName}</em> — ` : ''}${org.parentId ? `Descendant of #${org.parentId}` : '✨ Genesis Ancestor (Generation 1)'}</span>
       </div>
     `;
   }

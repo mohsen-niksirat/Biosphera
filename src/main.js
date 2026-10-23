@@ -4,6 +4,8 @@
  * Phylogenetic Cladogram, and Social Snapshot Exporter.
  */
 
+import './style.css';
+
 import { World } from './engine/World.js';
 import { Camera } from './render/Camera.js';
 import { Renderer } from './render/Renderer.js';
@@ -18,6 +20,13 @@ import { ArenaTrial } from './engine/ArenaTrial.js';
 import { DayNightCycle } from './engine/DayNightCycle.js';
 import { Cladogram } from './engine/Cladogram.js';
 import { SnapshotExporter } from './ui/Snapshot.js';
+import { SeasonCycle } from './engine/SeasonCycle.js';
+import { SpeciesRegistry } from './engine/SpeciesRegistry.js';
+import { HallOfFame } from './engine/HallOfFame.js';
+import { EvolutionChart } from './ui/EvolutionChart.js';
+
+const SAVE_KEY = 'biosphera_ecosave';
+const AUTOSAVE_KEY = 'biosphera_autosave';
 
 class BiospheraApp {
   constructor() {
@@ -27,8 +36,13 @@ class BiospheraApp {
     // 1. Audio Engine, Charts & Achievements
     this.soundEngine = new SoundEngine();
     this.chart = new PopulationChart('chart-canvas', 160);
+    this.evoChart = new EvolutionChart('evo-chart-canvas', 140);
     this.achievements = new AchievementsEngine();
     this.dayNight = new DayNightCycle(85);
+    this.seasons = new SeasonCycle(75);
+    this.species = new SpeciesRegistry();
+    this.records = new HallOfFame();
+    this.lastAutosave = performance.now();
 
     // 2. World & Camera
     this.world = new World(2400, 1800);
@@ -121,6 +135,8 @@ class BiospheraApp {
     this.setupHotkeys();
     this.setupPWA();
     this.updateTrophyBadge();
+    this.updateSeasonButton();
+    document.getElementById('trends-legend')?.insertAdjacentHTML('afterbegin', this.evoChart.legendHTML());
 
     requestAnimationFrame((t) => this.loop(t));
   }
@@ -331,7 +347,15 @@ class BiospheraApp {
   }
 
   setupUIBindings() {
-    // God Brush mode buttons
+    // Species list inside the Lineage modal
+    document.getElementById('btn-lineage')?.addEventListener('click', () => {
+      const modal = document.getElementById('lineage-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        this.cladogram.rebuildTree(this.world);
+        this.renderSpeciesList();
+      }
+    });
     document.querySelectorAll('.btn-brush').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll('.btn-brush').forEach((b) => b.classList.remove('active'));
@@ -430,14 +454,6 @@ class BiospheraApp {
     });
 
     // Cladogram Lineage modal
-    document.getElementById('btn-lineage')?.addEventListener('click', () => {
-      const modal = document.getElementById('lineage-modal');
-      if (modal) {
-        modal.style.display = 'flex';
-        this.cladogram.rebuildTree(this.world);
-      }
-    });
-
     document.getElementById('btn-close-lineage')?.addEventListener('click', () => {
       const modal = document.getElementById('lineage-modal');
       if (modal) modal.style.display = 'none';
@@ -458,6 +474,25 @@ class BiospheraApp {
       const modal = document.getElementById('guide-modal');
       if (modal) modal.style.display = 'none';
     });
+
+    // Evolution Trends drawer toggle
+    document.getElementById('btn-toggle-trends')?.addEventListener('click', (e) => {
+      const drawer = document.getElementById('trends-drawer');
+      if (drawer) {
+        drawer.classList.toggle('open');
+        e.currentTarget.classList.toggle('active');
+      }
+    });
+
+    // Ecosystem Save / Load & Season cycle (delegated via Controls callbacks)
+    this.controls.onSeasonCycle = () => {
+      const mode = this.seasons.cycleLock();
+      this.updateSeasonButton();
+      this.controls.showToast(mode === 'auto' ? '🌦️ Seasons: Auto Cycle' : `📅 Season locked: ${mode}`);
+    };
+
+    this.controls.onSave = () => this.saveEcosystem();
+    this.controls.onLoad = () => this.loadEcosystem();
 
     // Mobile Tools Menu Toggle
     const btnMobileMenu = document.getElementById('btn-mobile-menu');
@@ -537,6 +572,12 @@ class BiospheraApp {
         case 'KeyF':
           document.getElementById('btn-fullscreen')?.click();
           break;
+        case 'KeyS':
+          this.saveEcosystem();
+          break;
+        case 'KeyO':
+          this.loadEcosystem();
+          break;
         case 'KeyH':
         case 'Slash':
           document.getElementById('btn-help')?.click();
@@ -549,6 +590,79 @@ class BiospheraApp {
     const badge = document.getElementById('trophy-count');
     if (badge) {
       badge.innerText = `${this.achievements.getUnlockedCount()}/${this.achievements.trophies.length}`;
+    }
+  }
+
+  updateSeasonButton() {
+    const btn = document.getElementById('btn-season');
+    if (!btn) return;
+    const season = this.seasons.getSeason();
+    const icons = { spring: '🌱', summer: '☀️', autumn: '🍂', winter: '❄️' };
+    btn.innerText = `${icons[season]} ${season[0].toUpperCase() + season.slice(1)}${this.seasons.isLocked ? ' 🔒' : ''}`;
+  }
+
+  renderSpeciesList() {
+    const list = document.getElementById('species-list');
+    if (!list) return;
+
+    if (this.species.species.length === 0) {
+      list.innerHTML = '<p class="modal-desc">No living species detected.</p>';
+      return;
+    }
+
+    list.innerHTML = this.species.species.map((s) => {
+      const dietBadge = s.diet > 0.2
+        ? '<span class="badge badge-carnivore">🥩</span>'
+        : (s.diet < -0.2 ? '<span class="badge badge-herbivore">🌿</span>' : '<span class="badge badge-omnivore">🌾</span>');
+      return `
+        <div class="species-row">
+          <span class="species-dot" style="background: hsl(${s.hue}, 75%, 55%)"></span>
+          <span class="species-name"><em>${s.name}</em></span>
+          ${dietBadge}
+          <span class="species-count">×${s.count}</span>
+          <span class="text-muted">Gen ${s.gen}+</span>
+        </div>`;
+    }).join('');
+  }
+
+  saveEcosystem() {
+    try {
+      const state = JSON.stringify(this.world.serializeState());
+      localStorage.setItem(SAVE_KEY, state);
+      this.controls.showToast('💾 Ecosystem saved to browser storage!');
+    } catch (e) {
+      this.controls.showToast('⚠️ Save failed: storage full or unavailable.');
+      console.warn('Save failed:', e);
+    }
+  }
+
+  loadEcosystem() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem(AUTOSAVE_KEY);
+      if (!raw) {
+        this.controls.showToast('📂 No saved ecosystem found.');
+        return;
+      }
+      if (this.world.loadState(JSON.parse(raw))) {
+        this.renderer.selectedOrganism = null;
+        this.inspector.deselect();
+        this.camera.target = null;
+        this.updateSeasonButton();
+        this.controls.showToast('📂 Ecosystem restored from save!');
+      } else {
+        this.controls.showToast('⚠️ Save data is corrupted.');
+      }
+    } catch (e) {
+      this.controls.showToast('⚠️ Load failed: save data unreadable.');
+      console.warn('Load failed:', e);
+    }
+  }
+
+  autosave() {
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(this.world.serializeState()));
+    } catch {
+      // Quota exceeded or storage unavailable — skip silently
     }
   }
 
@@ -571,6 +685,9 @@ class BiospheraApp {
       </div>
     `).join('');
 
+    const recordsList = document.getElementById('records-list');
+    if (recordsList) recordsList.innerHTML = this.records.renderHTML();
+
     modal.style.display = 'flex';
   }
 
@@ -588,6 +705,7 @@ class BiospheraApp {
       this.lastFpsUpdate = currentTime;
       this.controls.updateStats(stats);
       this.achievements.checkMilestones(this.world);
+      this.records.update(this.world, currentTime);
     }
 
     // Record population history in chart
@@ -597,6 +715,43 @@ class BiospheraApp {
     this.world.update(dt);
     this.godBrush.update(dt);
     this.dayNight.update(dt);
+
+    // Seasons drive vegetation growth & metabolism multipliers
+    this.seasons.update(dt);
+    const seasonMult = this.seasons.getMultipliers();
+    this.world.foodRateMultiplier = seasonMult.food;
+    this.world.metabolismMultiplier = seasonMult.metabolism;
+    if (!this.seasons.isLocked) this.updateSeasonButton();
+
+    // Species auto-classification (throttled internally)
+    this.species.update(this.world, currentTime);
+
+    // Evolution trends sampling
+    const orgs = this.world.organisms;
+    if (orgs.length > 0) {
+      let size = 0, speed = 0, vision = 0, diet = 0, gen = 0;
+      for (const o of orgs) {
+        size += o.dna.size;
+        speed += o.dna.speed;
+        vision += o.dna.sensorRange;
+        diet += o.dna.diet;
+        gen += o.generation;
+      }
+      const n = orgs.length;
+      this.evoChart.record({
+        avgSize: size / n,
+        avgSpeed: speed / n,
+        avgVision: vision / n,
+        avgDiet: diet / n,
+        avgGeneration: gen / n
+      }, currentTime);
+    }
+
+    // Silent autosave every 90s
+    if (currentTime - this.lastAutosave >= 90000) {
+      this.lastAutosave = currentTime;
+      this.autosave();
+    }
 
     // Update Day/Night HUD text if in auto mode
     if (!this.dayNight.isLocked) {
@@ -610,8 +765,8 @@ class BiospheraApp {
     // 2. Camera tracking
     this.camera.update(this.canvas.width, this.canvas.height, dt);
 
-    // 3. Render Viewport with GodBrush ripples & Day/Night lighting
-    this.renderer.render(this.world, this.godBrush, this.dayNight);
+    // 3. Render Viewport with GodBrush ripples, Day/Night lighting & season tint
+    this.renderer.render(this.world, this.godBrush, this.dayNight, this.seasons.getTint());
 
     // 4. Update Microscope Inspector
     this.inspector.update();

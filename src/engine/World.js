@@ -7,6 +7,8 @@ import { Food } from '../entities/Food.js';
 import { Hazard } from '../entities/Hazard.js';
 import { SpatialHash } from './SpatialHash.js';
 import { DNA } from '../genetics/DNA.js';
+import { FlowField } from './FlowField.js';
+import { PheromoneField } from './PheromoneField.js';
 
 export class World {
   constructor(width = 2400, height = 1800) {
@@ -31,15 +33,42 @@ export class World {
     this.iceAgeTimer = 0;
     this.radiationTimer = 0;
 
+    // Environment systems
+    this.flow = new FlowField(width, height);
+    this.pheromones = new PheromoneField(width, height);
+    this.currentStrength = 0.35;   // water current push strength (0 disables)
+    this.sexualReproduction = false;
+    this.foodRateMultiplier = 1;   // set by the season cycle
+    this.metabolismMultiplier = 1; // set by the season cycle
+
     this.totalBorn = 0;
     this.totalDeaths = 0;
     this.maxGeneration = 1;
     this.deadLifespans = [];
 
+    // Per-step environment shared with every organism update
+    this._env = {
+      sexual: false,
+      metabolismMult: 1,
+      population: 0,
+      pheromones: this.pheromones,
+      onEat: (org, type) => this._handleEat(org, type)
+    };
+
     // Audio callback
     this.onEvent = null;
 
     this.loadPreset('sanctuary');
+  }
+
+  _handleEat(org, type) {
+    if (type === 'bite') {
+      this.pheromones.deposit(org.x, org.y, 'danger', 0.4);
+      this.onEvent?.('attack');
+    } else {
+      this.pheromones.deposit(org.x, org.y, 'food', 0.5);
+      this.onEvent?.('eat');
+    }
   }
 
   loadPreset(presetName) {
@@ -52,6 +81,8 @@ export class World {
     this.maxGeneration = 1;
     this.radiationTimer = 0;
     this.iceAgeTimer = 0;
+    this.pheromones = new PheromoneField(this.width, this.height);
+    this._env.pheromones = this.pheromones;
 
     switch (presetName) {
       case 'wasteland':
@@ -162,6 +193,9 @@ export class World {
     if (this.currentPreset !== 'glacial' && this.iceAgeTimer > 0) this.iceAgeTimer -= dt;
     if (this.radiationTimer > 0) this.radiationTimer -= dt;
 
+    this.flow.update(dt);
+    this.pheromones.update(dt);
+
     // 1. REFRESH SPATIAL HASHES
     this.spatialOrganisms.clear();
     for (let i = 0; i < this.organisms.length; i++) {
@@ -178,9 +212,10 @@ export class World {
       this.hazards[i].update(dt);
     }
 
-    // 3. SPAWN VEGETATION
+    // 3. SPAWN VEGETATION (rate scaled by the season cycle)
     if ((this.currentPreset === 'glacial' || this.iceAgeTimer <= 0) && this.foods.length < this.maxFoodCap) {
-      const toSpawn = Math.floor(this.foodSpawnRate * dt + (Math.random() < (this.foodSpawnRate * dt % 1) ? 1 : 0));
+      const effectiveRate = this.foodSpawnRate * this.foodRateMultiplier;
+      const toSpawn = Math.floor(effectiveRate * dt + (Math.random() < (effectiveRate * dt % 1) ? 1 : 0));
       for (let i = 0; i < toSpawn; i++) {
         const cluster = Math.random() < 0.6 && this.foods.length > 0;
         let fx = Math.random() * this.width;
@@ -208,6 +243,9 @@ export class World {
 
     // 5. UPDATE ORGANISMS
     const newborns = [];
+    this._env.sexual = this.sexualReproduction;
+    this._env.metabolismMult = this.metabolismMultiplier;
+    this._env.population = this.organisms.length;
 
     for (let i = this.organisms.length - 1; i >= 0; i--) {
       const org = this.organisms[i];
@@ -220,7 +258,8 @@ export class World {
         this.height,
         nearbyFoods,
         nearbyOrganisms,
-        this.hazards
+        this.hazards,
+        this._env
       );
 
       if (offspring && (this.organisms.length + newborns.length) < this.maxPopulationCap) {
@@ -228,6 +267,7 @@ export class World {
         this.totalBorn++;
         this.addParticleBurst(org.x, org.y, `hsl(${org.dna.colorHue}, 80%, 65%)`, 10);
         this.onEvent?.('birth');
+        this.pheromones.deposit(org.x, org.y, 'food', 0.25);
         if (offspring.generation > this.maxGeneration) {
           this.maxGeneration = offspring.generation;
         }
@@ -239,6 +279,7 @@ export class World {
         if (this.deadLifespans.length > 100) this.deadLifespans.shift();
 
         this.addParticleBurst(org.x, org.y, '#f43f5e', 8);
+        this.pheromones.deposit(org.x, org.y, 'danger', 1.0);
 
         // Controlled meat drop: prevent food explosions
         if (this.foods.length < this.maxFoodCap) {
@@ -247,6 +288,7 @@ export class World {
             const dropX = (org.x + (Math.random() - 0.5) * 15 + this.width) % this.width;
             const dropY = (org.y + (Math.random() - 0.5) * 15 + this.height) % this.height;
             this.foods.push(new Food(dropX, dropY, 'meat', 35));
+            this.pheromones.deposit(dropX, dropY, 'food', 0.6);
           }
         }
 
@@ -261,6 +303,20 @@ export class World {
     // Auto rescue from extinction
     if (this.organisms.length === 0) {
       this.spawnRandomPopulation(15);
+    }
+
+    // 5.5 WATER CURRENTS — push organisms & drift food along the flow field
+    if (this.currentStrength > 0) {
+      for (const org of this.organisms) {
+        const f = this.flow.sample(org.x, org.y);
+        org.x = (org.x + f.vx * this.currentStrength * dt + this.width) % this.width;
+        org.y = (org.y + f.vy * this.currentStrength * dt + this.height) % this.height;
+      }
+      for (const food of this.foods) {
+        const f = this.flow.sample(food.x, food.y);
+        food.x = (food.x + f.vx * this.currentStrength * 0.4 * dt + this.width) % this.width;
+        food.y = (food.y + f.vy * this.currentStrength * 0.4 * dt + this.height) % this.height;
+      }
     }
 
     // 6. UPDATE VISUAL PARTICLES
@@ -310,6 +366,94 @@ export class World {
   clearAll() {
     // Full reset: re-seed the current scenario from scratch (organisms, food, hazards, timers)
     this.loadPreset(this.currentPreset);
+  }
+
+  serializeState() {
+    return {
+      version: 1,
+      preset: this.currentPreset,
+      width: this.width,
+      height: this.height,
+      foodSpawnRate: this.foodSpawnRate,
+      maxFoodCap: this.maxFoodCap,
+      maxPopulationCap: this.maxPopulationCap,
+      iceAgeTimer: this.iceAgeTimer,
+      radiationTimer: this.radiationTimer,
+      totalBorn: this.totalBorn,
+      totalDeaths: this.totalDeaths,
+      maxGeneration: this.maxGeneration,
+      currentStrength: this.currentStrength,
+      sexualReproduction: this.sexualReproduction,
+      organisms: this.organisms.map((o) => ({
+        x: +o.x.toFixed(1),
+        y: +o.y.toFixed(1),
+        gen: o.generation,
+        parent: o.parentId,
+        id: o.id,
+        dna: o.dna.serialize(),
+        energy: +o.energy.toFixed(1),
+        age: +o.age.toFixed(1),
+        pe: o.plantsEaten,
+        me: o.meatEaten,
+        k: o.kills,
+        cc: o.childrenCount,
+        cd: +o.reproduceCooldown.toFixed(1)
+      })),
+      foods: this.foods.map((f) => [
+        +f.x.toFixed(1), +f.y.toFixed(1),
+        f.type === 'meat' ? 1 : 0,
+        +f.energy.toFixed(1), +f.age.toFixed(1)
+      ]),
+      hazards: this.hazards.map((h) => [+h.x.toFixed(1), +h.y.toFixed(1), h.radius, h.dps])
+    };
+  }
+
+  loadState(data) {
+    if (!data || data.version !== 1 || !Array.isArray(data.organisms)) return false;
+
+    this.currentPreset = data.preset || 'sanctuary';
+    this.width = data.width;
+    this.height = data.height;
+    this.flow.width = this.width;
+    this.flow.height = this.height;
+    this.pheromones = new PheromoneField(this.width, this.height);
+    this._env.pheromones = this.pheromones;
+
+    this.foodSpawnRate = data.foodSpawnRate;
+    this.maxFoodCap = data.maxFoodCap;
+    this.maxPopulationCap = data.maxPopulationCap;
+    this.iceAgeTimer = data.iceAgeTimer;
+    this.radiationTimer = data.radiationTimer;
+    this.totalBorn = data.totalBorn;
+    this.totalDeaths = data.totalDeaths;
+    this.maxGeneration = data.maxGeneration;
+    this.currentStrength = data.currentStrength ?? this.currentStrength;
+    this.sexualReproduction = !!data.sexualReproduction;
+
+    this.organisms = [];
+    for (const s of data.organisms) {
+      const dna = DNA.deserialize(s.dna);
+      if (!dna) continue;
+      const org = new Organism(s.x, s.y, dna, s.gen || 1, s.parent || null, s.energy);
+      if (s.id) org.id = s.id;
+      org.age = s.age || 0;
+      org.plantsEaten = s.pe || 0;
+      org.meatEaten = s.me || 0;
+      org.kills = s.k || 0;
+      org.childrenCount = s.cc || 0;
+      org.reproduceCooldown = s.cd || 0;
+      this.organisms.push(org);
+    }
+
+    this.foods = (data.foods || []).map(([x, y, isMeat, energy, age]) => {
+      const f = new Food(x, y, isMeat ? 'meat' : 'plant', energy);
+      f.age = age;
+      return f;
+    });
+
+    this.hazards = (data.hazards || []).map(([x, y, radius, dps]) => new Hazard(x, y, radius, dps));
+    this.particles = [];
+    return true;
   }
 
   getStats(fps) {
