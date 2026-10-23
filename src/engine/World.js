@@ -50,6 +50,8 @@ export class World {
     this.particles = [];
     this.deadLifespans = [];
     this.maxGeneration = 1;
+    this.radiationTimer = 0;
+    this.iceAgeTimer = 0;
 
     switch (presetName) {
       case 'wasteland':
@@ -145,8 +147,18 @@ export class World {
   update(rawDt) {
     if (this.isPaused) return;
 
-    const dt = Math.min(0.1, rawDt * this.timeScale);
+    // Fixed-step integration: scaled time is split into <=1/30s substeps so speed
+    // multipliers advance the whole simulation (movement included) without letting
+    // fast-forward steps tunnel through food or prey.
+    let remaining = Math.min(0.2, rawDt * this.timeScale);
+    while (remaining > 1e-6) {
+      const step = Math.min(1 / 30, remaining);
+      this.stepOnce(step);
+      remaining -= step;
+    }
+  }
 
+  stepOnce(dt) {
     if (this.currentPreset !== 'glacial' && this.iceAgeTimer > 0) this.iceAgeTimer -= dt;
     if (this.radiationTimer > 0) this.radiationTimer -= dt;
 
@@ -274,6 +286,7 @@ export class World {
       this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
     }
     this.onEvent?.('eat');
+    return toAdd;
   }
 
   triggerRadiationFlare() {
@@ -295,10 +308,8 @@ export class World {
   }
 
   clearAll() {
-    this.organisms = [];
-    this.foods = [];
-    this.particles = [];
-    this.spawnRandomPopulation(20);
+    // Full reset: re-seed the current scenario from scratch (organisms, food, hazards, timers)
+    this.loadPreset(this.currentPreset);
   }
 
   getStats(fps) {

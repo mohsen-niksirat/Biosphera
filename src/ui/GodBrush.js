@@ -113,13 +113,13 @@ export class GodBrush {
       speed: 360
     });
 
-    // Apply repulsive physical impulse to nearby organisms
+    // Apply repulsive physical impulse to nearby organisms (velocities are px/s)
     const affectedOrgs = this.world.spatialOrganisms.query(x, y, radius);
     for (const org of affectedOrgs) {
       const dx = org.x - x;
       const dy = org.y - y;
       const dist = Math.hypot(dx, dy) || 1;
-      const impulse = (1 - dist / radius) * (force / org.radius);
+      const impulse = (1 - dist / radius) * (force * 60 / org.radius);
       org.vx += (dx / dist) * impulse;
       org.vy += (dy / dist) * impulse;
     }

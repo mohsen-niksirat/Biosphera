@@ -64,7 +64,9 @@ export class DNA {
 
   static deserialize(dnaString) {
     try {
-      const parsed = JSON.parse(atob(dnaString));
+      const compact = String(dnaString).replace(/\s+/g, '');
+      const parsed = JSON.parse(atob(compact));
+      if (!parsed || typeof parsed !== 'object' || !parsed.b) return null;
       const brain = NeuralNet.deserialize(parsed.b);
       return new DNA({
         size: parsed.s,
@@ -78,8 +80,8 @@ export class DNA {
         brain
       });
     } catch (e) {
-      console.error('Failed to parse DNA string:', e);
-      return new DNA();
+      console.warn('Failed to parse DNA string:', e.message);
+      return null;
     }
   }
 }

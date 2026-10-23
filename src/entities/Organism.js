@@ -25,6 +25,7 @@ export class Organism {
     this.isDead = false;
 
     this.plantsEaten = 0;
+    this.meatEaten = 0;
     this.kills = 0;
     this.childrenCount = 0;
     this.reproduceCooldown = 6.0; // Must mature before reproducing
@@ -42,7 +43,7 @@ export class Organism {
     if (this.reproduceCooldown > 0) {
       this.reproduceCooldown -= dt;
     }
-    this.tailPhase += dt * (2 + Math.hypot(this.vx, this.vy) * 2.5);
+    this.tailPhase += dt * (2 + Math.hypot(this.vx, this.vy) * (2.5 / 60));
 
     // 1. SENSE
     const inputs = this.sense(nearbyFoods, nearbyOrganisms, nearbyHazards);
@@ -62,7 +63,8 @@ export class Organism {
     this.heading += steer * maxTurnRate * dt;
     this.heading = (this.heading + Math.PI * 3) % (Math.PI * 2) - Math.PI;
 
-    const accel = thrust * this.dna.speed * 45;
+    // All kinematics in px/second (frame-rate independent; tuned for a 60 FPS baseline)
+    const accel = thrust * this.dna.speed * 45 * 60;
     this.vx += Math.cos(this.heading) * accel * dt;
     this.vy += Math.sin(this.heading) * accel * dt;
 
@@ -71,14 +73,14 @@ export class Organism {
     this.vy *= Math.pow(drag, dt * 60);
 
     const currentSpeed = Math.hypot(this.vx, this.vy);
-    const maxSpeed = this.dna.speed * 1.5;
+    const maxSpeed = this.dna.speed * 1.5 * 60;
     if (currentSpeed > maxSpeed) {
       this.vx = (this.vx / currentSpeed) * maxSpeed;
       this.vy = (this.vy / currentSpeed) * maxSpeed;
     }
 
-    this.x += this.vx;
-    this.y += this.vy;
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
 
     // Toroidal world wrapping
     if (this.x < 0) this.x += worldWidth;
@@ -86,9 +88,10 @@ export class Organism {
     if (this.y < 0) this.y += worldHeight;
     else if (this.y > worldHeight) this.y -= worldHeight;
 
-    // 4. METABOLISM & ENERGY BURN
+    // 4. METABOLISM & ENERGY BURN (speed normalized back to 60fps-frame units so burn rates stay calibrated)
     const basalCost = 0.35 + (this.dna.size / 15) * 0.25;
-    const kineticCost = (currentSpeed * currentSpeed * 0.04) * (this.dna.size / 10);
+    const frameSpeed = currentSpeed / 60;
+    const kineticCost = (frameSpeed * frameSpeed * 0.04) * (this.dna.size / 10);
     const sensorCost = (this.dna.sensorRange / 200) * 0.15;
     const totalBurn = (basalCost + kineticCost + sensorCost) * dt;
 
@@ -256,7 +259,8 @@ export class Organism {
 
         const gained = food.energy * efficiency;
         this.energy = Math.min(this.maxEnergy, this.energy + gained);
-        this.plantsEaten++;
+        if (food.type === 'plant') this.plantsEaten++;
+        else this.meatEaten++;
         food.energy = 0;
         break;
       }

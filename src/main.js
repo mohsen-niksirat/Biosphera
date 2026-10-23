@@ -32,7 +32,7 @@ class BiospheraApp {
 
     // 2. World & Camera
     this.world = new World(2400, 1800);
-    this.camera = new Camera(this.world.width * 0.5 - 400, this.world.height * 0.5 - 300, 0.75);
+    this.camera = new Camera(0, 0, 0.75);
     this.renderer = new Renderer(this.canvas, this.camera);
 
     // 3. UI Modules & Controls
@@ -109,8 +109,13 @@ class BiospheraApp {
     this.isDragging = false;
     this.dragStartX = 0;
     this.dragStartY = 0;
+    this.pressX = 0;
+    this.pressY = 0;
 
     this.resizeCanvas();
+    // Center the initial view on the middle of the world using the real canvas size
+    this.camera.x = this.world.width * 0.5 - (this.canvas.width * 0.5) / this.camera.zoom;
+    this.camera.y = this.world.height * 0.5 - (this.canvas.height * 0.5) / this.camera.zoom;
     this.setupEventListeners();
     this.setupUIBindings();
     this.setupHotkeys();
@@ -154,6 +159,8 @@ class BiospheraApp {
       this.isDragging = true;
       this.dragStartX = e.clientX;
       this.dragStartY = e.clientY;
+      this.pressX = e.clientX;
+      this.pressY = e.clientY;
     });
 
     window.addEventListener('mousemove', (e) => {
@@ -180,7 +187,9 @@ class BiospheraApp {
       this.godBrush.handleMouseUp();
 
       if (this.isDragging) {
-        const movedDist = Math.hypot(e.clientX - this.dragStartX, e.clientY - this.dragStartY);
+        // Compare against the original press point — dragStart* is updated every
+        // mousemove for incremental panning, so it can't detect total drag distance.
+        const movedDist = Math.hypot(e.clientX - this.pressX, e.clientY - this.pressY);
         if (movedDist < 6) {
           this.handleCanvasClick(e.clientX, e.clientY);
         }
@@ -599,7 +608,7 @@ class BiospheraApp {
     }
 
     // 2. Camera tracking
-    this.camera.update(this.canvas.width, this.canvas.height);
+    this.camera.update(this.canvas.width, this.canvas.height, dt);
 
     // 3. Render Viewport with GodBrush ripples & Day/Night lighting
     this.renderer.render(this.world, this.godBrush, this.dayNight);

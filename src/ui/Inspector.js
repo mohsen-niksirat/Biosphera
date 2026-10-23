@@ -103,7 +103,7 @@ export class Inspector {
       <div class="stat-item">
         <label>Energy</label>
         <div class="progress-bar">
-          <div id="energy-bar" class="progress-fill" style="width: ${(org.energy / org.dna.reproduceThreshold) * 100}%"></div>
+          <div id="energy-bar" class="progress-fill" style="width: ${Math.min(100, Math.max(0, (org.energy / org.dna.reproduceThreshold) * 100))}%"></div>
         </div>
       </div>
       <div class="stat-item">

@@ -18,8 +18,11 @@ export class Cladogram {
 
     this.canvas.addEventListener('click', (e) => {
       const rect = this.canvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      // The canvas is CSS-scaled to container width — map click into canvas coordinates
+      const scaleX = this.canvas.width / rect.width;
+      const scaleY = this.canvas.height / rect.height;
+      const clickX = (e.clientX - rect.left) * scaleX;
+      const clickY = (e.clientY - rect.top) * scaleY;
 
       for (const node of this.nodes) {
         const dist = Math.hypot(node.x - clickX, node.y - clickY);
@@ -119,8 +122,25 @@ export class Cladogram {
 
     for (const node of this.nodes) {
       if (node.parentId) {
-        // Find ancestor candidate in previous generations
-        const parent = this.nodes.find(n => n.gen < node.gen);
+        // Link to the direct parent cluster if it is present among the living;
+        // otherwise fall back to the closest-hue node in the nearest earlier generation.
+        let parent = this.nodes.find(n => n.id === node.parentId);
+        if (!parent) {
+          let bestDist = Infinity;
+          for (const n of this.nodes) {
+            if (n.gen >= node.gen) continue;
+            const hueDist = Math.min(
+              Math.abs(n.hue - node.hue),
+              360 - Math.abs(n.hue - node.hue)
+            );
+            const genGap = node.gen - n.gen;
+            const score = hueDist + genGap * 6;
+            if (score < bestDist) {
+              bestDist = score;
+              parent = n;
+            }
+          }
+        }
         if (parent) {
           ctx.beginPath();
           ctx.moveTo(parent.x, parent.y);

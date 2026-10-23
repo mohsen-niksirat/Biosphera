@@ -40,6 +40,10 @@ export class ArenaTrial {
       this.stop();
     });
 
+    document.getElementById('btn-arena-done')?.addEventListener('click', () => {
+      this.stop();
+    });
+
     document.getElementById('btn-arena-retry')?.addEventListener('click', () => {
       if (this.testSubject) {
         this.start(this.testSubject.dna);
@@ -54,17 +58,19 @@ export class ArenaTrial {
     document.getElementById('arena-results')?.classList.remove('show');
     document.getElementById('arena-live-hud')?.classList.add('show');
 
-    // Mini arena world (800 x 600)
-    this.world = new World(800, 600);
+    // Mini arena world sized exactly to the 640x400 canvas (fully visible, no clipping)
+    this.world = new World(640, 400);
     this.world.foods = [];
     this.world.hazards = [];
     this.world.organisms = [];
+    this.world.foodSpawnRate = 0; // Trial food is placed deliberately per phase — no ambient spawning
+    this.world.maxFoodCap = 200;
 
     this.camera = new Camera(0, 0, 1.0);
     this.renderer = new Renderer(this.canvas, this.camera);
 
     // Spawn test subject in center
-    this.testSubject = new Organism(400, 300, dna.mutate(0, 0), 1, null, 120);
+    this.testSubject = new Organism(320, 200, dna.mutate(0, 0), 1, null, 120);
     this.world.organisms.push(this.testSubject);
 
     this.timer = 0;
@@ -85,17 +91,17 @@ export class ArenaTrial {
     this.world.foods = [];
     for (let i = 0; i < 22; i++) {
       const angle = (i / 22) * Math.PI * 2;
-      const dist = 140 + Math.random() * 120;
-      this.world.foods.push(new Food(400 + Math.cos(angle) * dist, 300 + Math.sin(angle) * dist, 'plant'));
+      const dist = 100 + Math.random() * 90;
+      this.world.foods.push(new Food(320 + Math.cos(angle) * dist, 200 + Math.sin(angle) * dist, 'plant'));
     }
   }
 
   spawnPhaseTwo() {
-    this.world.hazards.push(new Hazard(320, 240, 50, 40));
-    this.world.hazards.push(new Hazard(480, 360, 50, 40));
+    this.world.hazards.push(new Hazard(240, 150, 50, 40));
+    this.world.hazards.push(new Hazard(400, 250, 50, 40));
     // Re-seed some food near hazards
     for (let i = 0; i < 15; i++) {
-      this.world.foods.push(new Food(300 + Math.random() * 200, 200 + Math.random() * 200, 'plant'));
+      this.world.foods.push(new Food(240 + Math.random() * 160, 140 + Math.random() * 120, 'plant'));
     }
   }
 
@@ -130,13 +136,13 @@ export class ArenaTrial {
       this.soundEngine?.playDisaster();
     }
 
-    // Hunter AI pursuing subject
+    // Hunter AI pursuing subject (velocity in px/s)
     if (this.hunter && !this.hunter.isDead && !this.testSubject.isDead) {
       const dx = this.testSubject.x - this.hunter.x;
       const dy = this.testSubject.y - this.hunter.y;
       this.hunter.heading = Math.atan2(dy, dx);
-      this.hunter.vx = Math.cos(this.hunter.heading) * 3.2;
-      this.hunter.vy = Math.sin(this.hunter.heading) * 3.2;
+      this.hunter.vx = Math.cos(this.hunter.heading) * 3.2 * 60;
+      this.hunter.vy = Math.sin(this.hunter.heading) * 3.2 * 60;
     }
 
     // Step world simulation

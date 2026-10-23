@@ -299,7 +299,7 @@ export class Renderer {
     // Bioluminescent glow or Heatmap
     if (this.viewMode === 'heatmap') {
       const speed = Math.hypot(org.vx, org.vy);
-      ctx.fillStyle = speed > 2.5 ? '#f43f5e' : (speed > 1.2 ? '#facc15' : '#38bdf8');
+      ctx.fillStyle = speed > 150 ? '#f43f5e' : (speed > 72 ? '#facc15' : '#38bdf8');
       ctx.shadowColor = ctx.fillStyle;
       ctx.shadowBlur = 16;
     } else if (isBioluminescent) {

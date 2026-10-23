@@ -74,8 +74,8 @@ export class Controls {
     });
 
     document.getElementById('btn-food-bloom')?.addEventListener('click', () => {
-      this.world.triggerFoodSurge();
-      this.showToast('🍃 Food Bloom! 150 plant nutrients sprouted.');
+      const added = this.world.triggerFoodSurge();
+      this.showToast(`🍃 Food Bloom! ${added} plant nutrients sprouted.`);
     });
 
     document.getElementById('btn-radiation')?.addEventListener('click', () => {
@@ -118,15 +118,15 @@ export class Controls {
 
     btnSubmitDNA?.addEventListener('click', () => {
       const val = dnaInput?.value.trim();
-      if (val) {
-        try {
-          const dna = DNA.deserialize(val);
-          this.onImportDNA?.(dna);
-          if (modal) modal.style.display = 'none';
-          this.showToast('🧬 Custom organism imported into biosphere!');
-        } catch {
-          alert('Invalid DNA string format.');
-        }
+      if (!val) return;
+
+      const dna = DNA.deserialize(val);
+      if (dna) {
+        this.onImportDNA?.(dna);
+        if (modal) modal.style.display = 'none';
+        this.showToast('🧬 Custom organism imported into biosphere!');
+      } else {
+        alert('Invalid DNA string format. Paste a Base64 string exported from Biosphera.');
       }
     });
   }

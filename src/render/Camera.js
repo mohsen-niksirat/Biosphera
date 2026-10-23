@@ -16,12 +16,13 @@ export class Camera {
     this.target = org;
   }
 
-  update(screenWidth, screenHeight) {
+  update(screenWidth, screenHeight, dt = 1 / 60) {
     if (this.target && !this.target.isDead) {
       const targetScreenX = this.target.x - (screenWidth / 2) / this.zoom;
       const targetScreenY = this.target.y - (screenHeight / 2) / this.zoom;
-      this.x += (targetScreenX - this.x) * 0.08;
-      this.y += (targetScreenY - this.y) * 0.08;
+      const t = 1 - Math.pow(0.92, dt * 60); // frame-rate independent smoothing
+      this.x += (targetScreenX - this.x) * t;
+      this.y += (targetScreenY - this.y) * t;
     } else if (this.target && this.target.isDead) {
       this.target = null;
     }
