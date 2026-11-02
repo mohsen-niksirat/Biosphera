@@ -29,6 +29,7 @@ export class Organism {
     this.kills = 0;
     this.childrenCount = 0;
     this.reproduceCooldown = 6.0; // Must mature before reproducing
+    this.biteCooldown = 0; // Predation is rate-limited so prey can escape
 
     this.latestInputs = new Float32Array(9);
     this.latestOutputs = new Float32Array(4);
@@ -42,6 +43,9 @@ export class Organism {
     this.age += dt;
     if (this.reproduceCooldown > 0) {
       this.reproduceCooldown -= dt;
+    }
+    if (this.biteCooldown > 0) {
+      this.biteCooldown -= dt;
     }
     this.tailPhase += dt * (2 + Math.hypot(this.vx, this.vy) * (2.5 / 60));
 
@@ -328,7 +332,10 @@ export class Organism {
       }
     }
 
-    if (this.dna.diet > -0.2) {
+    // Predation. Rate-limited by biteCooldown: without it a predator in
+    // contact bites every substep (~30x/s), killing prey instantly and
+    // crashing the ecosystem into cyclic herbivore extinction.
+    if (this.dna.diet > -0.2 && this.biteCooldown <= 0) {
       for (const other of nearbyOrganisms) {
         if (other.id === this.id || other.isDead) continue;
         const dist = Math.hypot(other.x - this.x, other.y - this.y);
@@ -337,8 +344,11 @@ export class Organism {
           const biteDmg = (this.dna.size * 2.5) * (1 + this.dna.diet);
           other.energy -= biteDmg;
 
+          // Attacking costs energy (pursuit/handling). Without a cost, omnivores
+          // bite for free and outcompete pure herbivores, who cannot bite back.
           const absorbed = biteDmg * 0.7 * Math.max(0.3, this.dna.diet + 0.5);
-          this.energy = Math.min(this.maxEnergy, this.energy + absorbed);
+          this.energy = Math.min(this.maxEnergy, this.energy + absorbed - biteDmg * 0.12);
+          this.biteCooldown = 0.5 + Math.random() * 0.3;
 
           if (other.energy <= 0) {
             other.isDead = true;
