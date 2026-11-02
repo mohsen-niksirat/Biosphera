@@ -3,6 +3,7 @@
  */
 
 import { DNA } from '../genetics/DNA.js';
+import { wrapDelta } from '../engine/wrapDelta.js';
 
 export class Organism {
   constructor(x, y, dna, generation = 1, parentId = null, initialEnergy = 90) {
@@ -103,8 +104,9 @@ export class Organism {
 
     // Hazards
     for (const hazard of nearbyHazards) {
-      const dist = Math.hypot(hazard.x - this.x, hazard.y - this.y);
-      if (dist < hazard.radius + this.radius) {
+      const dx = wrapDelta(hazard.x - this.x, env.width);
+      const dy = wrapDelta(hazard.y - this.y, env.height);
+      if (Math.hypot(dx, dy) < hazard.radius + this.radius) {
         this.energy -= hazard.dps * dt;
       }
     }
@@ -138,8 +140,9 @@ export class Organism {
       for (let i = 0; i < nearbyOrganisms.length; i++) {
         const o = nearbyOrganisms[i];
         if (o.id !== this.id && !o.isDead) {
-          const d = Math.hypot(o.x - this.x, o.y - this.y);
-          if (d < crowdCheckRadius) {
+          const dx = wrapDelta(o.x - this.x, env.width);
+          const dy = wrapDelta(o.y - this.y, env.height);
+          if (Math.hypot(dx, dy) < crowdCheckRadius) {
             localCrowding++;
           }
         }
@@ -149,7 +152,7 @@ export class Organism {
         // Sexual mode: seek a willing nearby mate; parthenogenesis only as a
         // low-population fallback so the biome never dies out by chance.
         if (env.sexual) {
-          const partner = this.findMate(nearbyOrganisms);
+          const partner = this.findMate(nearbyOrganisms, env);
           if (partner) {
             return this.mateWith(partner);
           }
@@ -164,14 +167,16 @@ export class Organism {
     return null;
   }
 
-  findMate(nearbyOrganisms) {
+  findMate(nearbyOrganisms, env = {}) {
     let best = null;
     let bestDist = Infinity;
     for (const other of nearbyOrganisms) {
       if (other.id === this.id || other.isDead) continue;
       if (other.age < 6.0 || other.reproduceCooldown > 0) continue;
       if (other.energy < other.dna.reproduceThreshold * 0.55) continue;
-      const d = Math.hypot(other.x - this.x, other.y - this.y);
+      const dx = wrapDelta(other.x - this.x, env.width);
+      const dy = wrapDelta(other.y - this.y, env.height);
+      const d = Math.hypot(dx, dy);
       if (d < this.radius + other.radius + 30 && d < bestDist) {
         bestDist = d;
         best = other;
@@ -219,8 +224,8 @@ export class Organism {
       if (this.dna.diet < -0.2 && f.type === 'meat') continue;
       if (this.dna.diet > 0.2 && f.type === 'plant') continue;
 
-      const dx = f.x - this.x;
-      const dy = f.y - this.y;
+      const dx = wrapDelta(f.x - this.x, env.width);
+      const dy = wrapDelta(f.y - this.y, env.height);
       const dist = Math.hypot(dx, dy);
 
       if (dist <= this.dna.sensorRange && dist < closestFoodDist) {
@@ -239,9 +244,10 @@ export class Organism {
     if (closestFoodDist < Infinity) {
       inputs[0] = 1 - (closestFoodDist / this.dna.sensorRange);
       inputs[1] = closestFoodAngle / Math.PI;
+      // Relative wrapped vector to the target — correct across the world seam
       this.nearestTarget = {
-        x: this.x + Math.cos(this.heading + closestFoodAngle) * closestFoodDist,
-        y: this.y + Math.sin(this.heading + closestFoodAngle) * closestFoodDist,
+        dx: Math.cos(this.heading + closestFoodAngle) * closestFoodDist,
+        dy: Math.sin(this.heading + closestFoodAngle) * closestFoodDist,
         type: closestFoodType
       };
     }
@@ -254,8 +260,8 @@ export class Organism {
     for (const other of organisms) {
       if (other.id === this.id || other.isDead) continue;
 
-      const dx = other.x - this.x;
-      const dy = other.y - this.y;
+      const dx = wrapDelta(other.x - this.x, env.width);
+      const dy = wrapDelta(other.y - this.y, env.height);
       const dist = Math.hypot(dx, dy);
 
       if (dist <= this.dna.sensorRange && dist < closestOrgDist) {
@@ -287,7 +293,9 @@ export class Organism {
     // Sense hazard
     let closestHazardDist = Infinity;
     for (const h of hazards) {
-      const dist = Math.hypot(h.x - this.x, h.y - this.y);
+      const dx = wrapDelta(h.x - this.x, env.width);
+      const dy = wrapDelta(h.y - this.y, env.height);
+      const dist = Math.hypot(dx, dy);
       if (dist < closestHazardDist) {
         closestHazardDist = dist;
       }
@@ -312,7 +320,9 @@ export class Organism {
       // merely by drifting over them (it would pollute plantsEaten/meatEaten).
       if (this.dna.diet < -0.2 && food.type === 'meat') continue;
       if (this.dna.diet > 0.2 && food.type === 'plant') continue;
-      const dist = Math.hypot(food.x - this.x, food.y - this.y);
+      const dx = wrapDelta(food.x - this.x, env.width);
+      const dy = wrapDelta(food.y - this.y, env.height);
+      const dist = Math.hypot(dx, dy);
 
       if (dist <= mouthReach + food.radius) {
         let efficiency = 1.0;
@@ -338,7 +348,9 @@ export class Organism {
     if (this.dna.diet > -0.2 && this.biteCooldown <= 0) {
       for (const other of nearbyOrganisms) {
         if (other.id === this.id || other.isDead) continue;
-        const dist = Math.hypot(other.x - this.x, other.y - this.y);
+        const dx = wrapDelta(other.x - this.x, env.width);
+        const dy = wrapDelta(other.y - this.y, env.height);
+        const dist = Math.hypot(dx, dy);
 
         if (dist <= mouthReach + other.radius && other.dna.size <= this.dna.size * 1.3) {
           const biteDmg = (this.dna.size * 2.5) * (1 + this.dna.diet);

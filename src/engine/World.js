@@ -20,8 +20,8 @@ export class World {
     this.hazards = [];
     this.particles = []; // Visual particle bursts (mitosis, eating, deaths)
 
-    this.spatialOrganisms = new SpatialHash(90);
-    this.spatialFoods = new SpatialHash(70);
+    this.spatialOrganisms = new SpatialHash(90, width, height);
+    this.spatialFoods = new SpatialHash(70, width, height);
 
     this.foodSpawnRate = 16;
     this.maxFoodCap = 300;
@@ -253,6 +253,8 @@ export class World {
     this._env.sexual = this.sexualReproduction;
     this._env.metabolismMult = this.metabolismMultiplier;
     this._env.population = this.organisms.length;
+    this._env.width = this.width;
+    this._env.height = this.height;
 
     for (let i = this.organisms.length - 1; i >= 0; i--) {
       const org = this.organisms[i];
@@ -426,6 +428,8 @@ export class World {
     this.height = data.height;
     this.flow.width = this.width;
     this.flow.height = this.height;
+    this.spatialOrganisms = new SpatialHash(90, this.width, this.height);
+    this.spatialFoods = new SpatialHash(70, this.width, this.height);
     this.pheromones = new PheromoneField(this.width, this.height);
     this._env.pheromones = this.pheromones;
 

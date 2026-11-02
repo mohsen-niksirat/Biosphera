@@ -259,6 +259,27 @@ check('60s stability: population bounded, no NaN coordinates',
   check('Hall of Fame captures record holders', hof.records.oldestAge?.value === 200 && hof.records.mostKills?.value === 5);
 }
 
+// --- Test 15: toroidal sensing & spatial queries across the world seam ---
+{
+  const w = new World(2400, 1800);
+  w.organisms = [];
+  w.foods = [];
+  w.hazards = [];
+  const org = new Organism(30, 900, new DNA({ diet: -0.5, sensorRange: 200, sensorFov: Math.PI * 1.8, speed: 3, size: 10 }), 1);
+  org.heading = Math.PI; // facing left, toward the seam
+  w.organisms.push(org);
+  const food = { x: 2380, y: 900, type: 'plant', energy: 25, radius: 3.5, age: 0, maxAge: 300, update: () => true };
+  w.foods.push(food);
+  w.spatialFoods.insert(food);
+  w.spatialOrganisms.insert(org);
+
+  const queried = w.spatialFoods.query(org.x, org.y, org.dna.sensorRange);
+  const inputs = org.sense(queried, [], w.hazards, { width: w.width, height: w.height });
+  check('Toroidal seam: organism at x=30 senses food at x=2380 (50px across the seam)',
+    queried.includes(food) && inputs[0] > 0.5 && Math.abs(inputs[1]) < 0.1,
+    `queried=${queried.length} foodInput=${inputs[0].toFixed(2)} angleInput=${inputs[1].toFixed(2)}`);
+}
+
 const failed = results.filter(r => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
 process.exit(failed.length ? 1 : 0);

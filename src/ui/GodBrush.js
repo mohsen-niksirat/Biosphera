@@ -5,6 +5,7 @@
 
 import { Food } from '../entities/Food.js';
 import { Hazard } from '../entities/Hazard.js';
+import { wrapDelta } from '../engine/wrapDelta.js';
 
 export class GodBrush {
   constructor(world, camera, soundEngine, showToastCallback) {
@@ -118,8 +119,8 @@ export class GodBrush {
     // Apply repulsive physical impulse to nearby organisms (velocities are px/s)
     const affectedOrgs = this.world.spatialOrganisms.query(x, y, radius);
     for (const org of affectedOrgs) {
-      const dx = org.x - x;
-      const dy = org.y - y;
+      const dx = wrapDelta(org.x - x, this.world.width);
+      const dy = wrapDelta(org.y - y, this.world.height);
       const dist = Math.hypot(dx, dy) || 1;
       const impulse = (1 - dist / radius) * (force * 60 / org.radius);
       org.vx += (dx / dist) * impulse;
@@ -129,8 +130,8 @@ export class GodBrush {
     // Also push food particles
     const affectedFoods = this.world.spatialFoods.query(x, y, radius);
     for (const f of affectedFoods) {
-      const dx = f.x - x;
-      const dy = f.y - y;
+      const dx = wrapDelta(f.x - x, this.world.width);
+      const dy = wrapDelta(f.y - y, this.world.height);
       const dist = Math.hypot(dx, dy) || 1;
       f.x += (dx / dist) * 15;
       f.y += (dy / dist) * 15;

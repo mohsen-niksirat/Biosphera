@@ -252,9 +252,8 @@ export class Renderer {
       if (org.nearestTarget) {
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        const relX = org.nearestTarget.x - org.x;
-        const relY = org.nearestTarget.y - org.y;
-        ctx.lineTo(relX, relY);
+        // Relative wrapped vector to the target — stays correct across the seam
+        ctx.lineTo(org.nearestTarget.dx, org.nearestTarget.dy);
         ctx.strokeStyle = org.nearestTarget.type === 'plant' ? '#10b981' : '#f43f5e';
         ctx.setLineDash([3, 3]);
         ctx.stroke();

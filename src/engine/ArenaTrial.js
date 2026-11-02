@@ -9,6 +9,7 @@ import { Renderer } from '../render/Renderer.js';
 import { Organism } from '../entities/Organism.js';
 import { Food } from '../entities/Food.js';
 import { Hazard } from '../entities/Hazard.js';
+import { wrapDelta } from './wrapDelta.js';
 
 export class ArenaTrial {
   constructor(modalId, soundEngine, onCompleteCallback) {
@@ -136,10 +137,11 @@ export class ArenaTrial {
       this.soundEngine?.playDisaster();
     }
 
-    // Hunter AI pursuing subject (velocity in px/s)
+    // Hunter AI pursuing subject (velocity in px/s); wrapped so the chase
+    // stays correct when the subject crosses the arena's toroidal seam
     if (this.hunter && !this.hunter.isDead && !this.testSubject.isDead) {
-      const dx = this.testSubject.x - this.hunter.x;
-      const dy = this.testSubject.y - this.hunter.y;
+      const dx = wrapDelta(this.testSubject.x - this.hunter.x, this.world.width);
+      const dy = wrapDelta(this.testSubject.y - this.hunter.y, this.world.height);
       this.hunter.heading = Math.atan2(dy, dx);
       this.hunter.vx = Math.cos(this.hunter.heading) * 3.2 * 60;
       this.hunter.vy = Math.sin(this.hunter.heading) * 3.2 * 60;
