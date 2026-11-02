@@ -302,6 +302,12 @@ export class Organism {
 
     for (let i = 0; i < nearbyFoods.length; i++) {
       const food = nearbyFoods[i];
+      if (food.energy <= 0) continue; // already consumed this substep
+      // Same dietary filter as sense(): a strict carnivore never targets plants
+      // and a strict herbivore never targets meat, so neither should eat them
+      // merely by drifting over them (it would pollute plantsEaten/meatEaten).
+      if (this.dna.diet < -0.2 && food.type === 'meat') continue;
+      if (this.dna.diet > 0.2 && food.type === 'plant') continue;
       const dist = Math.hypot(food.x - this.x, food.y - this.y);
 
       if (dist <= mouthReach + food.radius) {

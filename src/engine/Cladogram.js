@@ -114,6 +114,10 @@ export class Cladogram {
 
     ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
     ctx.font = '11px sans-serif';
+    // Reset alignment: the node loop below leaves textAlign='center' behind,
+    // which would clip this header on every render after the first.
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillText(`Ancestral Lineage (Generations ${minGen} ⟷ ${maxGen})`, 20, 24);
 
     // Draw branch connecting lines

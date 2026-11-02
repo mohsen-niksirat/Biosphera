@@ -39,9 +39,11 @@ export class SoundEngine {
       this.isMuted = false;
     } else {
       this.isMuted = !this.isMuted;
-      if (this.ctx.state === 'suspended' && !this.isMuted) {
-        this.ctx.resume();
-      }
+    }
+    // Browsers may create the context suspended (autoplay policy) — the very
+    // first unmute must resume it or the soundscape stays silent.
+    if (this.ctx && this.ctx.state === 'suspended' && !this.isMuted) {
+      this.ctx.resume();
     }
 
     if (this.ambientGain) {

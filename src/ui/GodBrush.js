@@ -16,12 +16,14 @@ export class GodBrush {
     this.currentMode = 'select'; // 'select' | 'plant' | 'meat' | 'hazard' | 'current'
     this.isBrushing = false;
     this.lastBrushTime = 0;
+    this.onModeChange = null; // lets the UI keep brush buttons in sync
 
     this.ripples = []; // Fluid current shockwaves
   }
 
   setMode(mode) {
     this.currentMode = mode;
+    this.onModeChange?.(mode);
     const canvas = document.getElementById('sim-canvas');
     if (!canvas) return;
 

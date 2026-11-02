@@ -111,7 +111,7 @@ export class ArenaTrial {
     hunterDNA.speed = 3.8;
     hunterDNA.size = 18;
     hunterDNA.diet = 1.0; // strict carnivore
-    this.hunter = new Organism(100, 100, hunterDNA, 99, 'drone', 300);
+    this.hunter = new Organism(100, 100, hunterDNA, 99, null, 300);
     this.world.organisms.push(this.hunter);
   }
 

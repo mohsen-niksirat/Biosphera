@@ -57,6 +57,8 @@ export class World {
 
     // Audio callback
     this.onEvent = null;
+    // Fired whenever loadPreset wipes the world (scenario switch / full reset)
+    this.onReset = null;
 
     this.loadPreset('sanctuary');
   }
@@ -136,6 +138,8 @@ export class World {
         this.spawnRandomPopulation(35);
         break;
     }
+
+    this.onReset?.();
   }
 
   spawnRandomPopulation(count) {
@@ -190,7 +194,10 @@ export class World {
   }
 
   stepOnce(dt) {
-    if (this.currentPreset !== 'glacial' && this.iceAgeTimer > 0) this.iceAgeTimer -= dt;
+    if (this.currentPreset !== 'glacial' && this.iceAgeTimer > 0) {
+      this.iceAgeTimer -= dt;
+      if (this.iceAgeTimer <= 0) this.onEvent?.('ice_age_end');
+    }
     if (this.radiationTimer > 0) this.radiationTimer -= dt;
 
     this.flow.update(dt);
@@ -337,7 +344,7 @@ export class World {
   }
 
   triggerFoodSurge() {
-    const toAdd = Math.min(60, Math.max(15, this.maxFoodCap - this.foods.length));
+    const toAdd = Math.max(0, Math.min(60, this.maxFoodCap - this.foods.length));
     for (let i = 0; i < toAdd; i++) {
       this.foods.push(new Food(Math.random() * this.width, Math.random() * this.height, 'plant'));
     }
@@ -349,6 +356,9 @@ export class World {
     this.radiationTimer = 15;
     for (const org of this.organisms) {
       org.dna = org.dna.mutate(0.4, 0.6);
+      // dna replaced: re-derive energy ceiling and clamp to it
+      org.maxEnergy = org.dna.reproduceThreshold * 1.35;
+      org.energy = Math.min(org.energy, org.maxEnergy);
     }
     this.onEvent?.('disaster');
   }
@@ -427,6 +437,7 @@ export class World {
     this.totalBorn = data.totalBorn;
     this.totalDeaths = data.totalDeaths;
     this.maxGeneration = data.maxGeneration;
+    this.deadLifespans = [];
     this.currentStrength = data.currentStrength ?? this.currentStrength;
     this.sexualReproduction = !!data.sexualReproduction;
 

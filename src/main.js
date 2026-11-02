@@ -96,6 +96,7 @@ class BiospheraApp {
       switch (evt) {
         case 'birth':
           this.soundEngine.playBirth();
+          if (this.world.radiationTimer > 0) this.achievements.unlock('mutant_x');
           break;
         case 'eat':
           this.soundEngine.playEat();
@@ -108,10 +109,19 @@ class BiospheraApp {
           break;
         case 'disaster':
           this.soundEngine.playDisaster();
-          if (this.world.iceAgeTimer > 0) this.achievements.unlock('ice_survivor');
-          if (this.world.radiationTimer > 0) this.achievements.unlock('mutant_x');
+          break;
+        case 'ice_age_end':
+          // Survived the full freeze — unlock only when it ends, not when triggered
+          this.achievements.unlock('ice_survivor');
           break;
       }
+    };
+
+    // Scenario switch / full reset wipes the world — drop stale selections
+    this.world.onReset = () => {
+      this.renderer.selectedOrganism = null;
+      this.inspector.deselect();
+      this.camera.target = null;
     };
 
     // Loop state
@@ -136,6 +146,7 @@ class BiospheraApp {
     this.setupPWA();
     this.updateTrophyBadge();
     this.updateSeasonButton();
+    this.syncToggleButtons();
     document.getElementById('trends-legend')?.insertAdjacentHTML('afterbegin', this.evoChart.legendHTML());
 
     requestAnimationFrame((t) => this.loop(t));
@@ -358,12 +369,16 @@ class BiospheraApp {
     });
     document.querySelectorAll('.btn-brush').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.btn-brush').forEach((b) => b.classList.remove('active'));
-        const target = e.currentTarget;
-        target.classList.add('active');
-        this.godBrush.setMode(target.dataset.brush);
+        this.godBrush.setMode(e.currentTarget.dataset.brush);
       });
     });
+    // Single source of truth for brush button highlighting (covers one-off
+    // placements that auto-revert to the select brush)
+    this.godBrush.onModeChange = (mode) => {
+      document.querySelectorAll('.btn-brush').forEach((b) => {
+        b.classList.toggle('active', b.dataset.brush === mode);
+      });
+    };
 
     // View Mode selector
     document.getElementById('select-view-mode')?.addEventListener('change', (e) => {
@@ -371,16 +386,17 @@ class BiospheraApp {
       this.controls.showToast(`👁️ View Mode: ${e.target.options[e.target.selectedIndex].text}`);
     });
 
-    // Day / Night cycle toggle
+    // Day / Night cycle toggle — 3-state: Auto → locked Day → locked Night → Auto
     const btnDayNight = document.getElementById('btn-day-night');
     btnDayNight?.addEventListener('click', () => {
-      const current = this.dayNight.getPhase();
-      const next = current === 'night' ? 'day' : 'night';
-      const locked = this.dayNight.toggleLock(next);
+      const dn = this.dayNight;
+      // toggleLock unlocks only when re-passing the currently locked mode, so
+      // walking day → night → night is what returns the cycle to Auto.
+      const locked = dn.toggleLock(dn.isLocked ? 'night' : 'day');
       if (btnDayNight) {
         btnDayNight.innerText = locked === 'night' ? '🌙 Night' : (locked === 'day' ? '☀️ Day' : '🔄 Auto');
       }
-      this.controls.showToast(locked === 'night' ? '🌌 Switched to Bioluminescent Night' : '☀️ Switched to Diurnal Light');
+      this.controls.showToast(locked === 'night' ? '🌌 Switched to Bioluminescent Night' : (locked === 'day' ? '☀️ Switched to Diurnal Light' : '🔄 Day/Night cycle restored to Auto'));
     });
 
     // Camera follow
@@ -601,6 +617,13 @@ class BiospheraApp {
     btn.innerText = `${icons[season]} ${season[0].toUpperCase() + season.slice(1)}${this.seasons.isLocked ? ' 🔒' : ''}`;
   }
 
+  // Reflect world state onto the toggle buttons (currents/mating start active
+  // by default and can also be restored to non-default values by a save load)
+  syncToggleButtons() {
+    document.getElementById('btn-currents')?.classList.toggle('active', this.world.currentStrength > 0);
+    document.getElementById('btn-mating')?.classList.toggle('active', this.world.sexualReproduction);
+  }
+
   renderSpeciesList() {
     const list = document.getElementById('species-list');
     if (!list) return;
@@ -648,6 +671,7 @@ class BiospheraApp {
         this.inspector.deselect();
         this.camera.target = null;
         this.updateSeasonButton();
+        this.syncToggleButtons();
         this.controls.showToast('📂 Ecosystem restored from save!');
       } else {
         this.controls.showToast('⚠️ Save data is corrupted.');
@@ -692,7 +716,9 @@ class BiospheraApp {
   }
 
   loop(currentTime) {
-    const dt = Math.min(0.1, (currentTime - this.lastTime) / 1000);
+    // Clamp to >= 0: the first rAF timestamp can precede the constructor's
+    // performance.now(), and a negative dt sends SeasonCycle into ORDER[-1].
+    const dt = Math.max(0, Math.min(0.1, (currentTime - this.lastTime) / 1000));
     this.lastTime = currentTime;
 
     const stats = this.world.getStats(this.currentFps);

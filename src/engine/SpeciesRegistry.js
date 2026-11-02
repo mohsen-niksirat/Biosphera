@@ -80,11 +80,16 @@ export class SpeciesRegistry {
     this.species = clusters.map((c) => {
       const hash = hashGenome(c.prototype.dna);
       let name = this.nameCache.get(hash);
-      if (!name || usedNames.has(name)) {
+      if (!name) {
+        name = this._generateName(hash, usedNames);
+        this.nameCache.set(hash, name);
+      } else if (usedNames.has(name)) {
+        // Another living cluster quantizes to the same genome hash this tick.
+        // Give this one a suffixed name WITHOUT overwriting the cached one,
+        // otherwise both species rename every update tick.
         name = this._generateName(hash, usedNames);
       }
       usedNames.add(name);
-      this.nameCache.set(hash, name);
 
       let dietSum = 0;
       let gen = Infinity;

@@ -89,7 +89,9 @@ export class GeneLab {
     const elDiet = document.getElementById('stat-diet-badge');
 
     const basal = 0.35 + (this.traits.size / 15) * 0.25;
-    const kinetic = (this.traits.speed * this.traits.speed * 0.04) * (this.traits.size / 10);
+    // Sprint burn happens at max speed = speed * 1.5 (Organism movement cap),
+    // so the real kinetic cost is (1.5 * speed)^2 — 2.25x the naive speed^2.
+    const kinetic = ((this.traits.speed * 1.5) * (this.traits.speed * 1.5) * 0.04) * (this.traits.size / 10);
 
     if (elBasal) elBasal.innerText = `${basal.toFixed(2)}/s`;
     if (elKinetic) elKinetic.innerText = `${kinetic.toFixed(2)}/s`;
@@ -109,6 +111,8 @@ export class GeneLab {
   }
 
   startPreviewLoop() {
+    // Guard against stacked rAF chains when open() is called while already open
+    if (this.animFrame) cancelAnimationFrame(this.animFrame);
     const render = () => {
       this.previewPhase += 0.06 * this.traits.speed;
       this.drawPreview();

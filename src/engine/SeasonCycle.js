@@ -28,7 +28,10 @@ export class SeasonCycle {
 
   getSeason() {
     if (this.isLocked && this.lockedSeason) return this.lockedSeason;
-    return ORDER[Math.floor(this.time / this.seasonDuration) % ORDER.length];
+    // Negative-safe modulo: a negative time (e.g. from a first-frame dt glitch)
+    // must never index ORDER with -1.
+    const idx = Math.floor(this.time / this.seasonDuration);
+    return ORDER[((idx % ORDER.length) + ORDER.length) % ORDER.length];
   }
 
   getMultipliers() {
