@@ -20,7 +20,7 @@ export class Food {
     if (this.type === 'meat') {
       const decay = (dt / this.maxAge) * this.maxEnergy;
       this.energy -= decay;
-      this.radius = Math.max(1.5, 4.5 * (this.energy / this.maxEnergy));
+      this.radius = this.maxEnergy > 0 ? Math.max(1.5, 4.5 * (this.energy / this.maxEnergy)) : 1.5;
       return this.energy > 1;
     }
     return this.age < this.maxAge;

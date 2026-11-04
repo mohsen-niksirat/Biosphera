@@ -11,7 +11,7 @@ export class Inspector {
     this.container.innerHTML = `
       <div class="inspector-header">
         <h3>🔬 Microscope Inspector</h3>
-        <button id="close-inspector" class="btn-icon">&times;</button>
+        <button id="close-inspector" class="btn-icon" aria-label="Close inspector">&times;</button>
       </div>
       <div class="empty-state" id="inspector-empty">Click any swimming organism to inspect its brain & DNA</div>
       <div class="inspector-body" id="inspector-content" style="display: none;">
@@ -120,7 +120,7 @@ export class Inspector {
       </div>
       <div class="stat-item" style="grid-column: span 2;">
         <label>Species / Lineage</label>
-        <span class="stat-val">${org.speciesName ? `<em>${org.speciesName}</em> — ` : ''}${org.parentId ? `Descendant of #${org.parentId}` : '✨ Genesis Ancestor (Generation 1)'}</span>
+        <span class="stat-val">${org.speciesName ? `<em>${org.speciesName}</em>, ` : ''}${org.parentId ? `Descendant of #${org.parentId}` : 'Genesis Ancestor (Generation 1)'}</span>
       </div>
     `;
   }

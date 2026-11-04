@@ -36,6 +36,9 @@ export class SoundEngine {
   toggleMute() {
     if (!this.ctx) {
       this.init();
+      // WebAudio unavailable: stay muted so the button never reports a sound
+      // that cannot exist, and repeated clicks don't wedge the state.
+      if (!this.ctx) return false;
       this.isMuted = false;
     } else {
       this.isMuted = !this.isMuted;

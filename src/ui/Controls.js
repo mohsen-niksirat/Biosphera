@@ -184,7 +184,8 @@ export class Controls {
     if (!toast) return;
     toast.innerText = msg;
     toast.classList.add('show');
-    setTimeout(() => {
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => {
       toast.classList.remove('show');
     }, 3200);
   }

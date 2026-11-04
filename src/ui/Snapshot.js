@@ -33,9 +33,19 @@ export class SnapshotExporter {
       ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
       ctx.lineWidth = 1 * scale;
 
-      // Rounded rectangle
+      // Rounded rectangle (roundRect needs Chrome 99+/Safari 16+; arcTo covers the rest)
       ctx.beginPath();
-      ctx.roundRect(barX, barY, barWidth, barHeight, 8 * scale);
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(barX, barY, barWidth, barHeight, 8 * scale);
+      } else {
+        const r = 8 * scale;
+        ctx.moveTo(barX + r, barY);
+        ctx.arcTo(barX + barWidth, barY, barX + barWidth, barY + barHeight, r);
+        ctx.arcTo(barX + barWidth, barY + barHeight, barX, barY + barHeight, r);
+        ctx.arcTo(barX, barY + barHeight, barX, barY, r);
+        ctx.arcTo(barX, barY, barX + barWidth, barY, r);
+        ctx.closePath();
+      }
       ctx.fill();
       ctx.stroke();
 

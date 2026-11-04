@@ -47,7 +47,7 @@ class BiospheraApp {
     // 2. World & Camera
     this.world = new World(2400, 1800);
     this.camera = new Camera(0, 0, 0.75);
-    this.renderer = new Renderer(this.canvas, this.camera);
+    this.renderer = new Renderer(this.canvas, this.camera, this.world);
 
     // 3. UI Modules & Controls
     this.inspector = new Inspector('inspector-panel');
@@ -540,7 +540,9 @@ class BiospheraApp {
 
   setupHotkeys() {
     window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.repeat) return; // holding a key must not machine-gun the toggles
 
       switch (e.code) {
         case 'Space':

@@ -13,3 +13,12 @@ export function wrapDelta(d, worldSize) {
   if (d < -worldSize * 0.5) return d + worldSize;
   return d;
 }
+
+/**
+ * Wrap an absolute position onto [0, worldSize). A non-finite worldSize
+ * (caller without world dimensions) leaves the value untouched.
+ */
+export function wrapCoord(v, worldSize) {
+  if (!Number.isFinite(worldSize)) return v;
+  return ((v % worldSize) + worldSize) % worldSize;
+}

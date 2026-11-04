@@ -110,8 +110,35 @@ export class NeuralNet {
   }
 
   static deserialize(data) {
-    const weights = data.weights.map(layer => layer.map(w => new Float32Array(w)));
-    const biases = data.biases.map(b => new Float32Array(b));
+    // Validate shape and dimensions: a tampered brain must throw (caught by
+    // DNA.deserialize) rather than build a network that computes NaN forever.
+    const t = data.topology || {};
+    const layerSizes = [t.inputs, ...(t.hiddens || []), t.outputs];
+    if (layerSizes.some((s) => !Number.isInteger(s) || s < 1)) {
+      throw new Error('invalid brain topology');
+    }
+    if (!Array.isArray(data.weights) || data.weights.length !== layerSizes.length - 1 ||
+        !Array.isArray(data.biases) || data.biases.length !== layerSizes.length - 1) {
+      throw new Error('brain layer count mismatch');
+    }
+    const finite = (arr) => arr.every((v) => Number.isFinite(v));
+    const weights = data.weights.map((layer, l) => {
+      if (!Array.isArray(layer) || layer.length !== layerSizes[l + 1]) {
+        throw new Error('brain weight topology mismatch');
+      }
+      return layer.map((w) => {
+        if (!Array.isArray(w) || w.length !== layerSizes[l] || !finite(w)) {
+          throw new Error('brain weight shape mismatch');
+        }
+        return new Float32Array(w);
+      });
+    });
+    const biases = data.biases.map((b, l) => {
+      if (!Array.isArray(b) || b.length !== layerSizes[l + 1] || !finite(b)) {
+        throw new Error('brain bias shape mismatch');
+      }
+      return new Float32Array(b);
+    });
     return new NeuralNet(data.topology, weights, biases);
   }
 }

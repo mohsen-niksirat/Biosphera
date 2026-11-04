@@ -3,7 +3,7 @@
  */
 
 import { DNA } from '../genetics/DNA.js';
-import { wrapDelta } from '../engine/wrapDelta.js';
+import { wrapDelta, wrapCoord } from '../engine/wrapDelta.js';
 
 export class Organism {
   constructor(x, y, dna, generation = 1, parentId = null, initialEnergy = 90) {
@@ -154,13 +154,13 @@ export class Organism {
         if (env.sexual) {
           const partner = this.findMate(nearbyOrganisms, env);
           if (partner) {
-            return this.mateWith(partner);
+            return this.mateWith(partner, env);
           }
-          if ((env.population ?? Infinity) > 12) {
+          if ((env.population ?? Infinity) >= 12) {
             return null;
           }
         }
-        return this.reproduce();
+        return this.reproduce(env);
       }
     }
 
@@ -185,7 +185,7 @@ export class Organism {
     return best;
   }
 
-  mateWith(partner) {
+  mateWith(partner, env = {}) {
     const cooldown = 9.0 + Math.random() * 4.0;
     this.reproduceCooldown = cooldown;
     partner.reproduceCooldown = cooldown;
@@ -200,10 +200,12 @@ export class Organism {
     const childDNA = DNA.crossover(this.dna, partner.dna).mutate(0.08, 0.25);
     const spawnDist = this.radius + childDNA.size + 4;
     const angle = Math.random() * Math.PI * 2;
+    const childX = wrapCoord(this.x + Math.cos(angle) * spawnDist, env.width);
+    const childY = wrapCoord(this.y + Math.sin(angle) * spawnDist, env.height);
 
     return new Organism(
-      this.x + Math.cos(angle) * spawnDist,
-      this.y + Math.sin(angle) * spawnDist,
+      childX,
+      childY,
       childDNA,
       this.generation + 1,
       this.id,
@@ -221,6 +223,7 @@ export class Organism {
 
     // Sense Food
     for (const f of foods) {
+      if (f.energy <= 0) continue; // consumed or expired: not real food anymore
       if (this.dna.diet < -0.2 && f.type === 'meat') continue;
       if (this.dna.diet > 0.2 && f.type === 'plant') continue;
 
@@ -373,7 +376,7 @@ export class Organism {
     }
   }
 
-  reproduce() {
+  reproduce(env = {}) {
     this.reproduceCooldown = 8.0 + Math.random() * 4.0; // 8-12 seconds cooldown
     const childDNA = this.dna.mutate(0.08, 0.25);
     const share = Math.min(0.45, Math.max(0.3, this.dna.gestationShare));
@@ -384,8 +387,8 @@ export class Organism {
 
     const spawnAngle = this.heading + Math.PI + (Math.random() - 0.5) * 0.8;
     const spawnDist = this.radius + childDNA.size + 4;
-    const childX = this.x + Math.cos(spawnAngle) * spawnDist;
-    const childY = this.y + Math.sin(spawnAngle) * spawnDist;
+    const childX = wrapCoord(this.x + Math.cos(spawnAngle) * spawnDist, env.width);
+    const childY = wrapCoord(this.y + Math.sin(spawnAngle) * spawnDist, env.height);
 
     return new Organism(
       childX,

@@ -244,6 +244,10 @@ export class World {
     for (let i = this.foods.length - 1; i >= 0; i--) {
       const food = this.foods[i];
       if (food.energy <= 0 || !food.update(dt)) {
+        // Zero the energy before culling: the spatial hash still holds this
+        // object until the next rebuild, and a zero gate stops organisms from
+        // eating (or sensing) food that has already rotted away.
+        food.energy = 0;
         this.foods.splice(i, 1);
       }
     }
@@ -358,9 +362,10 @@ export class World {
     this.radiationTimer = 15;
     for (const org of this.organisms) {
       org.dna = org.dna.mutate(0.4, 0.6);
-      // dna replaced: re-derive energy ceiling and clamp to it
+      // dna replaced: re-derive energy ceiling and body radius, clamp to ceiling
       org.maxEnergy = org.dna.reproduceThreshold * 1.35;
       org.energy = Math.min(org.energy, org.maxEnergy);
+      org.radius = org.dna.size;
     }
     this.onEvent?.('disaster');
   }

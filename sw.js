@@ -4,7 +4,7 @@
 
 // Bump on every behavioral fix: the fetch handler is cache-first, so a stale
 // cache would keep serving the previous (broken) build until this changes.
-const CACHE_NAME = 'biosphera-v6';
+const CACHE_NAME = 'biosphera-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',

@@ -67,10 +67,12 @@ export class HallOfFame {
     }
 
     const pop = world.organisms.length;
-    const nextPop = this._better({ value: pop, gen: world.maxGeneration, hue: 200 }, this.records.peakPopulation);
-    if (nextPop !== this.records.peakPopulation) {
-      this.records.peakPopulation = nextPop;
-      changed = true;
+    if (pop > 0) {
+      const nextPop = this._better({ value: pop, gen: world.maxGeneration, hue: 200 }, this.records.peakPopulation);
+      if (nextPop !== this.records.peakPopulation) {
+        this.records.peakPopulation = nextPop;
+        changed = true;
+      }
     }
 
     if (changed) this.save();

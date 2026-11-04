@@ -4,7 +4,7 @@
  */
 
 export class Renderer {
-  constructor(canvas, camera) {
+  constructor(canvas, camera, world = null) {
     this.canvas = canvas;
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('Could not acquire 2D context');
@@ -15,12 +15,14 @@ export class Renderer {
     this.hoveredOrganism = null;
     this.viewMode = 'standard'; // 'standard' | 'sensory' | 'heatmap'
 
-    // Ambient floating plankton/dust in water
+    // Ambient floating plankton/dust in water, scattered across the real world
+    const worldW = world?.width ?? 2400;
+    const worldH = world?.height ?? 1800;
     this.ambientParticles = [];
     for (let i = 0; i < 90; i++) {
       this.ambientParticles.push({
-        x: Math.random() * 2400,
-        y: Math.random() * 1800,
+        x: Math.random() * worldW,
+        y: Math.random() * worldH,
         r: 0.8 + Math.random() * 1.5,
         speed: 0.2 + Math.random() * 0.4,
         angle: Math.random() * Math.PI * 2,

@@ -61,9 +61,7 @@ export class EvolutionChart {
 
       for (let i = 0; i < this.history.length; i++) {
         const raw = this.history[i][key];
-        const norm = (raw + (cfg.offset || 0)) / (this.maxHistory && key === 'generation'
-          ? Math.max(cfg.max, raw + (cfg.offset || 0))
-          : cfg.max + (cfg.offset || 0));
+        const norm = (raw + (cfg.offset || 0)) / (cfg.max + (cfg.offset || 0));
         const x = (i / (this.maxHistory - 1)) * w;
         const y = h - Math.min(1, Math.max(0, norm)) * (h - 6) - 3;
 

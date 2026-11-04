@@ -102,18 +102,24 @@ export class DNA {
       const compact = String(dnaString).replace(/\s+/g, '');
       const parsed = JSON.parse(atob(compact));
       if (!parsed || typeof parsed !== 'object' || !parsed.b) return null;
+
+      // Every trait must be a finite number: a corrupt or hand-edited string
+      // must be rejected, not silently imported as a NaN-bodied organism.
+      const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+      const fields = {
+        size: num(parsed.s),
+        speed: num(parsed.v),
+        sensorRange: num(parsed.sr),
+        sensorFov: num(parsed.fov),
+        colorHue: num(parsed.h),
+        diet: num(parsed.d),
+        reproduceThreshold: num(parsed.rt),
+        gestationShare: num(parsed.gs)
+      };
+      if (Object.values(fields).some((v) => v === null)) return null;
+
       const brain = NeuralNet.deserialize(parsed.b);
-      return new DNA({
-        size: parsed.s,
-        speed: parsed.v,
-        sensorRange: parsed.sr,
-        sensorFov: parsed.fov,
-        colorHue: parsed.h,
-        diet: parsed.d,
-        reproduceThreshold: parsed.rt,
-        gestationShare: parsed.gs,
-        brain
-      });
+      return new DNA({ ...fields, brain });
     } catch (e) {
       console.warn('Failed to parse DNA string:', e.message);
       return null;

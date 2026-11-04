@@ -88,6 +88,12 @@ export class GodBrush {
       }
 
       case 'hazard': {
+        // Bounded like the world's own vents: unbounded placement would let
+        // the brush carpet the arena and degrade the simulation.
+        if (this.world.hazards.length >= 12) {
+          this.showToast?.('⚠️ Thermal vent limit reached (12).');
+          break;
+        }
         this.world.hazards.push(new Hazard(wx, wy, 55, 45));
         this.world.addParticleBurst(wx, wy, '#ef4444', 12);
         this.soundEngine?.playDisaster();
@@ -116,13 +122,15 @@ export class GodBrush {
       speed: 360
     });
 
-    // Apply repulsive physical impulse to nearby organisms (velocities are px/s)
+    // Apply repulsive physical impulse to nearby organisms (velocities are px/s).
+    // Flat falloff from the epicenter; the old force*60/radius term overshot the
+    // speed clamp by ~10x, saturating every hit organism regardless of distance.
     const affectedOrgs = this.world.spatialOrganisms.query(x, y, radius);
     for (const org of affectedOrgs) {
       const dx = wrapDelta(org.x - x, this.world.width);
       const dy = wrapDelta(org.y - y, this.world.height);
       const dist = Math.hypot(dx, dy) || 1;
-      const impulse = (1 - dist / radius) * (force * 60 / org.radius);
+      const impulse = (1 - dist / radius) * force;
       org.vx += (dx / dist) * impulse;
       org.vy += (dy / dist) * impulse;
     }
