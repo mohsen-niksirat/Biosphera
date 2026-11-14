@@ -4,8 +4,6 @@
  * Phylogenetic Cladogram, and Social Snapshot Exporter.
  */
 
-import './style.css';
-
 import { World } from './engine/World.js';
 import { Camera } from './render/Camera.js';
 import { Renderer } from './render/Renderer.js';
@@ -24,6 +22,10 @@ import { SeasonCycle } from './engine/SeasonCycle.js';
 import { SpeciesRegistry } from './engine/SpeciesRegistry.js';
 import { HallOfFame } from './engine/HallOfFame.js';
 import { EvolutionChart } from './ui/EvolutionChart.js';
+import { Minimap } from './ui/Minimap.js';
+import { WorldSettings } from './ui/WorldSettings.js';
+import { WorldIO } from './engine/WorldIO.js';
+import { setIcon, setLabel, setPressed, setupModalDismissal, isModalOpen, openModal, closeModal } from './ui/dom.js';
 
 const SAVE_KEY = 'biosphera_ecosave';
 const AUTOSAVE_KEY = 'biosphera_autosave';
@@ -49,6 +51,10 @@ class BiospheraApp {
     this.camera = new Camera(0, 0, 0.75);
     this.renderer = new Renderer(this.canvas, this.camera, this.world);
 
+    // 2b. Whole-biome map + live world rules
+    this.minimap = new Minimap('minimap-canvas', this.world, this.camera, this.canvas, 'minimap-panel');
+    this.settings = new WorldSettings('settings-modal', this.world, this.dayNight, () => this.syncToggleButtons());
+
     // 3. UI Modules & Controls
     this.inspector = new Inspector('inspector-panel');
     this.controls = new Controls(this.world, this.soundEngine);
@@ -66,7 +72,7 @@ class BiospheraApp {
       this.inspector.inspect(injected);
       this.camera.follow(injected);
       this.achievements.unlock('bio_engineer');
-      this.controls.showToast('🧬 Injected custom engineered lifeform!');
+      this.controls.showToast('Engineered lifeform injected.');
     });
 
     // 6. Gladiator Arena Trial
@@ -81,13 +87,13 @@ class BiospheraApp {
       this.camera.follow(targetOrg);
       this.renderer.selectedOrganism = targetOrg;
       this.inspector.inspect(targetOrg);
-      this.controls.showToast('🎯 Focused on living lineage');
+      this.controls.showToast('Camera locked on living lineage.');
     });
 
     // 8. Hook Achievements Unlocked
     this.achievements.onUnlock = (trophy) => {
       this.soundEngine.playBirth();
-      this.controls.showToast(`🏆 Milestone Unlocked: ${trophy.icon} ${trophy.title}`);
+      this.controls.showToast(`Milestone unlocked: ${trophy.title}`);
       this.updateTrophyBadge();
     };
 
@@ -117,11 +123,16 @@ class BiospheraApp {
       }
     };
 
-    // Scenario switch / full reset wipes the world — drop stale selections
+    // Scenario switch / full reset wipes the world — drop stale selections and history
     this.world.onReset = () => {
       this.renderer.selectedOrganism = null;
+      this.renderer.hoveredOrganism = null;
       this.inspector.deselect();
       this.camera.target = null;
+      this.species = new SpeciesRegistry();
+      this.chart.reset();
+      this.evoChart.reset();
+      this.lastSeason = '';
     };
 
     // Loop state
@@ -129,6 +140,8 @@ class BiospheraApp {
     this.frameCount = 0;
     this.lastFpsUpdate = performance.now();
     this.currentFps = 60;
+    this.lastDayPhase = '';
+    this.lastSeason = '';
 
     this.isDragging = false;
     this.dragStartX = 0;
@@ -138,12 +151,12 @@ class BiospheraApp {
 
     this.resizeCanvas();
     // Center the initial view on the middle of the world using the real canvas size
-    this.camera.x = this.world.width * 0.5 - (this.canvas.width * 0.5) / this.camera.zoom;
-    this.camera.y = this.world.height * 0.5 - (this.canvas.height * 0.5) / this.camera.zoom;
+    this.centerCameraOnWorld();
     this.setupEventListeners();
     this.setupUIBindings();
     this.setupHotkeys();
     this.setupPWA();
+    setupModalDismissal();
     this.updateTrophyBadge();
     this.updateSeasonButton();
     this.syncToggleButtons();
@@ -153,7 +166,10 @@ class BiospheraApp {
   }
 
   setupPWA() {
-    if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    // Dev and raw HTTP serve un-hashed module URLs. A cache-first worker there
+    // would pin stale source files, so only the built app registers it.
+    const isProduction = import.meta.env && import.meta.env.PROD === true;
+    if (isProduction && 'serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
   }
@@ -168,6 +184,9 @@ class BiospheraApp {
     this.canvas.height = height * dpr;
     this.canvas.style.width = `${width}px`;
     this.canvas.style.height = `${height}px`;
+
+    // The camera maps world units to device pixels; keep the ratio in sync.
+    if (this.camera) this.camera.pixelRatio = dpr;
   }
 
   setupEventListeners() {
@@ -362,9 +381,10 @@ class BiospheraApp {
     document.getElementById('btn-lineage')?.addEventListener('click', () => {
       const modal = document.getElementById('lineage-modal');
       if (modal) {
-        modal.style.display = 'flex';
+        openModal(modal);
         this.cladogram.rebuildTree(this.world);
         this.renderSpeciesList();
+        this.renderGenerationHistogram();
       }
     });
     document.querySelectorAll('.btn-brush').forEach((btn) => {
@@ -383,7 +403,7 @@ class BiospheraApp {
     // View Mode selector
     document.getElementById('select-view-mode')?.addEventListener('change', (e) => {
       this.renderer.viewMode = e.target.value;
-      this.controls.showToast(`👁️ View Mode: ${e.target.options[e.target.selectedIndex].text}`);
+      this.controls.showToast(`View mode: ${e.target.options[e.target.selectedIndex].text}`);
     });
 
     // Day / Night cycle toggle — 3-state: Auto → locked Day → locked Night → Auto
@@ -392,17 +412,60 @@ class BiospheraApp {
       const dn = this.dayNight;
       // toggleLock unlocks only when re-passing the currently locked mode, so
       // walking day → night → night is what returns the cycle to Auto.
-      const locked = dn.toggleLock(dn.isLocked ? 'night' : 'day');
-      if (btnDayNight) {
-        btnDayNight.innerText = locked === 'night' ? '🌙 Night' : (locked === 'day' ? '☀️ Day' : '🔄 Auto');
+      dn.toggleLock(dn.isLocked ? 'night' : 'day');
+      this.updateDayNightButton();
+      const phase = dn.getPhase();
+      this.controls.showToast(dn.isLocked
+        ? (phase === 'night' ? 'Bioluminescent night locked.' : 'Diurnal light locked.')
+        : 'Day/night cycle restored to automatic.');
+    });
+
+    // Whole-biome map toggle
+    const btnMinimap = document.getElementById('btn-minimap');
+    const toggleMinimap = () => {
+      const open = this.minimap.toggle();
+      btnMinimap?.classList.toggle('active', open);
+      setPressed(btnMinimap, open);
+      document.getElementById('minimap-panel')?.setAttribute('aria-hidden', open ? 'false' : 'true');
+    };
+    btnMinimap?.addEventListener('click', toggleMinimap);
+    this.toggleMinimap = toggleMinimap;
+
+    // Live world rules (capacity, mutation, currents, day length)
+    document.getElementById('btn-settings')?.addEventListener('click', () => this.settings.open());
+
+    // Portable ecosystem files
+    document.getElementById('btn-export-world')?.addEventListener('click', () => {
+      WorldIO.downloadWorld(this.world, (msg) => this.controls.showToast(msg));
+    });
+
+    const worldFileInput = document.getElementById('world-file-input');
+    document.getElementById('btn-import-world')?.addEventListener('click', () => worldFileInput?.click());
+    worldFileInput?.addEventListener('change', async () => {
+      const file = worldFileInput.files && worldFileInput.files[0];
+      if (!file) return;
+      const result = await WorldIO.readWorldFile(file);
+      worldFileInput.value = '';
+      if (!result.ok) {
+        this.controls.showToast(result.error);
+        return;
       }
-      this.controls.showToast(locked === 'night' ? '🌌 Switched to Bioluminescent Night' : (locked === 'day' ? '☀️ Switched to Diurnal Light' : '🔄 Day/Night cycle restored to Auto'));
+      if (this.world.loadState(result.state)) {
+        this.afterWorldLoaded('Ecosystem imported from file.');
+      } else {
+        this.controls.showToast('Save data is corrupted or from an unsupported version.');
+      }
+    });
+
+    // Ecology history as CSV
+    document.getElementById('btn-export-csv')?.addEventListener('click', () => {
+      WorldIO.downloadCSV(this.chart, (msg) => this.controls.showToast(msg));
     });
 
     // Camera follow
     this.inspector.onFollow = (org) => {
       this.camera.follow(org);
-      this.controls.showToast(`🎯 Tracking Organism #${org.id}`);
+      this.controls.showToast(`Tracking organism #${org.id}`);
     };
 
     // Gladiator Arena Trial trigger
@@ -416,21 +479,21 @@ class BiospheraApp {
       const clone = this.world.spawnOrganismAt(org.x + 20, org.y + 20, childDNA);
       this.renderer.selectedOrganism = clone;
       this.inspector.inspect(clone);
-      this.controls.showToast('🧬 Organism cloned and mutated!');
+      this.controls.showToast('Organism cloned with a fresh mutation.');
     };
 
     // Kill
     this.inspector.onKill = (org) => {
       org.isDead = true;
       this.renderer.selectedOrganism = null;
-      this.controls.showToast('💀 Organism terminated.');
+      this.controls.showToast('Organism terminated.');
     };
 
     // Export DNA
     this.inspector.onExport = (dnaString) => {
       this.achievements.unlock('dna_globetrotter');
       navigator.clipboard.writeText(dnaString).then(() => {
-        this.controls.showToast('📋 DNA string copied to clipboard!');
+        this.controls.showToast('DNA string copied to clipboard.');
       }).catch(() => {
         prompt('Copy DNA string below:', dnaString);
       });
@@ -465,14 +528,12 @@ class BiospheraApp {
     });
 
     document.getElementById('btn-close-trophies')?.addEventListener('click', () => {
-      const modal = document.getElementById('trophies-modal');
-      if (modal) modal.style.display = 'none';
+      closeModal(document.getElementById('trophies-modal'));
     });
 
     // Cladogram Lineage modal
     document.getElementById('btn-close-lineage')?.addEventListener('click', () => {
-      const modal = document.getElementById('lineage-modal');
-      if (modal) modal.style.display = 'none';
+      closeModal(document.getElementById('lineage-modal'));
     });
 
     // Snapshot Exporter
@@ -482,13 +543,11 @@ class BiospheraApp {
 
     // Scientific Guide modal
     document.getElementById('btn-help')?.addEventListener('click', () => {
-      const modal = document.getElementById('guide-modal');
-      if (modal) modal.style.display = 'flex';
+      openModal(document.getElementById('guide-modal'));
     });
 
     document.getElementById('btn-close-guide')?.addEventListener('click', () => {
-      const modal = document.getElementById('guide-modal');
-      if (modal) modal.style.display = 'none';
+      closeModal(document.getElementById('guide-modal'));
     });
 
     // Evolution Trends drawer toggle
@@ -504,7 +563,7 @@ class BiospheraApp {
     this.controls.onSeasonCycle = () => {
       const mode = this.seasons.cycleLock();
       this.updateSeasonButton();
-      this.controls.showToast(mode === 'auto' ? '🌦️ Seasons: Auto Cycle' : `📅 Season locked: ${mode}`);
+      this.controls.showToast(mode === 'auto' ? 'Seasons: auto cycle' : `Season locked: ${mode}`);
     };
 
     this.controls.onSave = () => this.saveEcosystem();
@@ -515,13 +574,16 @@ class BiospheraApp {
     const topActions = document.getElementById('top-actions');
     btnMobileMenu?.addEventListener('click', () => {
       topActions?.classList.toggle('mobile-open');
+      const open = topActions?.classList.contains('mobile-open') || false;
+      btnMobileMenu.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
 
     // Close mobile menu when an action is selected
     topActions?.querySelectorAll('button, select').forEach((el) => {
       el.addEventListener('click', () => {
-        if (window.innerWidth <= 840) {
+        if (window.innerWidth <= 1120) {
           topActions.classList.remove('mobile-open');
+          btnMobileMenu?.setAttribute('aria-expanded', 'false');
         }
       });
     });
@@ -533,7 +595,9 @@ class BiospheraApp {
       if (bottomBar) {
         bottomBar.classList.toggle('toolbar-minimized');
         const isMin = bottomBar.classList.contains('toolbar-minimized');
-        btnToggleToolbar.innerText = isMin ? '▲ Controls' : '▼ Hide';
+        btnToggleToolbar.classList.toggle('minimized', isMin);
+        setLabel(btnToggleToolbar, isMin ? 'Show controls' : 'Hide controls');
+        setPressed(btnToggleToolbar, !isMin);
       }
     });
   }
@@ -543,6 +607,10 @@ class BiospheraApp {
       const tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.repeat) return; // holding a key must not machine-gun the toggles
+      // Never steal browser shortcuts (Ctrl/Cmd+S must still save the page)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // Modal dialogs own the keyboard while they are open
+      if (isModalOpen()) return;
 
       switch (e.code) {
         case 'Space':
@@ -575,6 +643,9 @@ class BiospheraApp {
           }
           break;
         }
+        case 'KeyG':
+          this.toggleMinimap?.();
+          break;
         case 'KeyC':
           document.getElementById('btn-toggle-chart')?.click();
           break;
@@ -615,15 +686,140 @@ class BiospheraApp {
     const btn = document.getElementById('btn-season');
     if (!btn) return;
     const season = this.seasons.getSeason();
-    const icons = { spring: '🌱', summer: '☀️', autumn: '🍂', winter: '❄️' };
-    btn.innerText = `${icons[season]} ${season[0].toUpperCase() + season.slice(1)}${this.seasons.isLocked ? ' 🔒' : ''}`;
+    const label = btn.querySelector('.btn-label');
+    if (label) label.textContent = season[0].toUpperCase() + season.slice(1);
+    const lock = btn.querySelector('.icon-lock');
+    if (lock) lock.hidden = !this.seasons.isLocked;
+    btn.classList.toggle('active', this.seasons.isLocked);
+    btn.setAttribute('aria-label', `Season: ${season}${this.seasons.isLocked ? ' (locked)' : ' (auto cycle)'}`);
+  }
+
+  updateDayNightButton() {
+    const btn = document.getElementById('btn-day-night');
+    if (!btn) return;
+    const phase = this.dayNight.getPhase();
+    const locked = this.dayNight.isLocked;
+    const icons = { day: 'i-sun', dawn: 'i-sun', dusk: 'i-moon', night: 'i-moon' };
+    setIcon(btn, icons[phase] || 'i-cycle');
+    setLabel(btn, phase[0].toUpperCase() + phase.slice(1));
+    btn.classList.toggle('active', locked);
+    setPressed(btn, locked);
+    btn.setAttribute('aria-label', `Day/night: ${phase}${locked ? ' (locked)' : ' (automatic)'}`);
+  }
+
+  /** Shared post-load reset: drop stale selections and history, recenter the view. */
+  afterWorldLoaded(message) {
+    this.renderer.selectedOrganism = null;
+    this.renderer.hoveredOrganism = null;
+    this.inspector.deselect();
+    this.camera.target = null;
+    this.species = new SpeciesRegistry();
+    this.chart.reset();
+    this.evoChart.reset();
+    this.centerCameraOnWorld();
+    this.updateSeasonButton();
+    this.syncToggleButtons();
+    this.lastDayPhase = '';
+    this.controls.showToast(message);
+  }
+
+  centerCameraOnWorld() {
+    const viewW = this.canvas.clientWidth || this.canvas.width;
+    const viewH = this.canvas.clientHeight || this.canvas.height;
+    this.camera.x = this.world.width * 0.5 - (viewW * 0.5) / this.camera.zoom;
+    this.camera.y = this.world.height * 0.5 - (viewH * 0.5) / this.camera.zoom;
+  }
+
+  /** Living organisms per generation, drawn into the Lineage modal. */
+  renderGenerationHistogram() {
+    const canvas = document.getElementById('generation-histogram');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Size the backing store to the dialog width so 10px labels stay legible
+    // on phones instead of being scaled down with a fixed 600px canvas.
+    const rect = canvas.getBoundingClientRect();
+    const cssW = Math.max(260, Math.round(rect.width || 600));
+    if (canvas.width !== cssW || canvas.height !== 120) {
+      canvas.width = cssW;
+      canvas.height = 120;
+    }
+    canvas.style.height = '120px';
+
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const orgs = this.world.organisms;
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.textBaseline = 'middle';
+
+    if (orgs.length === 0) {
+      ctx.fillStyle = '#8fa9b3';
+      ctx.textAlign = 'center';
+      ctx.fillText('No living organisms', w * 0.5, h * 0.5);
+      return;
+    }
+
+    let min = Infinity;
+    let max = -Infinity;
+    for (const o of orgs) {
+      if (o.generation < min) min = o.generation;
+      if (o.generation > max) max = o.generation;
+    }
+
+    const bins = new Array(max - min + 1).fill(0);
+    for (const o of orgs) bins[o.generation - min]++;
+    const peak = Math.max(1, ...bins);
+
+    const pad = { l: 28, r: 10, t: 18, b: 24 };
+    const plotW = w - pad.l - pad.r;
+    const plotH = h - pad.t - pad.b;
+    const slot = plotW / bins.length;
+    const barW = Math.max(2, slot - 2);
+
+    // Baseline + peak guide
+    ctx.strokeStyle = 'rgba(220, 236, 242, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, h - pad.b + 0.5);
+    ctx.lineTo(w - pad.r, h - pad.b + 0.5);
+    ctx.stroke();
+
+    for (let i = 0; i < bins.length; i++) {
+      const barH = (bins[i] / peak) * plotH;
+      const x = pad.l + i * slot + 1;
+      const y = h - pad.b - barH;
+      ctx.fillStyle = bins[i] === peak ? '#3fe0d0' : 'rgba(63, 224, 208, 0.42)';
+      if (barH > 0) ctx.fillRect(x, y, barW, barH);
+    }
+
+    // Axis labels
+    ctx.fillStyle = '#8fa9b3';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${peak} max`, w - pad.r, 9);
+
+    if (min === max) {
+      ctx.textAlign = 'center';
+      ctx.fillText(`Gen ${min}`, pad.l + plotW * 0.5, h - 9);
+    } else {
+      ctx.textAlign = 'left';
+      ctx.fillText(`Gen ${min}`, pad.l, h - 9);
+      ctx.textAlign = 'right';
+      ctx.fillText(`Gen ${max}`, w - pad.r, h - 9);
+    }
   }
 
   // Reflect world state onto the toggle buttons (currents/mating start active
   // by default and can also be restored to non-default values by a save load)
   syncToggleButtons() {
-    document.getElementById('btn-currents')?.classList.toggle('active', this.world.currentStrength > 0);
-    document.getElementById('btn-mating')?.classList.toggle('active', this.world.sexualReproduction);
+    const currents = document.getElementById('btn-currents');
+    const mating = document.getElementById('btn-mating');
+    const currentsOn = this.world.currentStrength > 0;
+    currents?.classList.toggle('active', currentsOn);
+    mating?.classList.toggle('active', this.world.sexualReproduction);
+    setPressed(currents, currentsOn);
+    setPressed(mating, this.world.sexualReproduction);
   }
 
   renderSpeciesList() {
@@ -637,8 +833,10 @@ class BiospheraApp {
 
     list.innerHTML = this.species.species.map((s) => {
       const dietBadge = s.diet > 0.2
-        ? '<span class="badge badge-carnivore">🥩</span>'
-        : (s.diet < -0.2 ? '<span class="badge badge-herbivore">🌿</span>' : '<span class="badge badge-omnivore">🌾</span>');
+        ? '<span class="badge badge-carnivore"><i class="dot dot-carn"></i>Carnivore</span>'
+        : (s.diet < -0.2
+          ? '<span class="badge badge-herbivore"><i class="dot dot-herb"></i>Herbivore</span>'
+          : '<span class="badge badge-omnivore"><i class="dot dot-omni"></i>Omnivore</span>');
       return `
         <div class="species-row">
           <span class="species-dot" style="background: hsl(${s.hue}, 75%, 55%)"></span>
@@ -654,32 +852,35 @@ class BiospheraApp {
     try {
       const state = JSON.stringify(this.world.serializeState());
       localStorage.setItem(SAVE_KEY, state);
-      this.controls.showToast('💾 Ecosystem saved to browser storage!');
+      this.controls.showToast('Ecosystem saved to browser storage.');
     } catch (e) {
-      this.controls.showToast('⚠️ Save failed: storage full or unavailable.');
+      this.controls.showToast('Save failed: storage full or unavailable.');
       console.warn('Save failed:', e);
     }
   }
 
   loadEcosystem() {
     try {
-      const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem(AUTOSAVE_KEY);
-      if (!raw) {
-        this.controls.showToast('📂 No saved ecosystem found.');
+      const candidates = [localStorage.getItem(SAVE_KEY), localStorage.getItem(AUTOSAVE_KEY)].filter(Boolean);
+      if (candidates.length === 0) {
+        this.controls.showToast('No saved ecosystem found.');
         return;
       }
-      if (this.world.loadState(JSON.parse(raw))) {
-        this.renderer.selectedOrganism = null;
-        this.inspector.deselect();
-        this.camera.target = null;
-        this.updateSeasonButton();
-        this.syncToggleButtons();
-        this.controls.showToast('📂 Ecosystem restored from save!');
-      } else {
-        this.controls.showToast('⚠️ Save data is corrupted.');
+
+      for (const raw of candidates) {
+        try {
+          if (this.world.loadState(JSON.parse(raw))) {
+            this.afterWorldLoaded('Ecosystem restored from browser storage.');
+            return;
+          }
+        } catch {
+          // Corrupt slot: fall through to the autosave before giving up
+        }
       }
+
+      this.controls.showToast('Save data is corrupted.');
     } catch (e) {
-      this.controls.showToast('⚠️ Load failed: save data unreadable.');
+      this.controls.showToast('Load failed: save data unreadable.');
       console.warn('Load failed:', e);
     }
   }
@@ -714,7 +915,7 @@ class BiospheraApp {
     const recordsList = document.getElementById('records-list');
     if (recordsList) recordsList.innerHTML = this.records.renderHTML();
 
-    modal.style.display = 'flex';
+    openModal(modal);
   }
 
   loop(currentTime) {
@@ -731,7 +932,7 @@ class BiospheraApp {
       this.currentFps = Math.round((this.frameCount * 1000) / (currentTime - this.lastFpsUpdate));
       this.frameCount = 0;
       this.lastFpsUpdate = currentTime;
-      this.controls.updateStats(stats);
+      this.controls.updateStats(this.world.getStats(this.currentFps));
       this.achievements.checkMilestones(this.world);
       this.records.update(this.world, currentTime);
     }
@@ -749,7 +950,11 @@ class BiospheraApp {
     const seasonMult = this.seasons.getMultipliers();
     this.world.foodRateMultiplier = seasonMult.food;
     this.world.metabolismMultiplier = seasonMult.metabolism;
-    if (!this.seasons.isLocked) this.updateSeasonButton();
+    const seasonName = this.seasons.getSeason();
+    if (seasonName !== this.lastSeason) {
+      this.lastSeason = seasonName;
+      this.updateSeasonButton();
+    }
 
     // Species auto-classification (throttled internally)
     this.species.update(this.world, currentTime);
@@ -781,14 +986,15 @@ class BiospheraApp {
       this.autosave();
     }
 
-    // Update Day/Night HUD text if in auto mode
-    if (!this.dayNight.isLocked) {
-      const phase = this.dayNight.getPhase();
-      const btn = document.getElementById('btn-day-night');
-      if (btn) {
-        btn.innerText = phase === 'night' ? '🌙 Night' : (phase === 'dusk' ? '🌆 Dusk' : (phase === 'dawn' ? '🌅 Dawn' : '☀️ Day'));
-      }
+    // Day/night readout (rewritten only when the phase or lock state changes)
+    const phaseKey = `${this.dayNight.getPhase()}:${this.dayNight.isLocked}`;
+    if (phaseKey !== this.lastDayPhase) {
+      this.lastDayPhase = phaseKey;
+      this.updateDayNightButton();
     }
+
+    // Whole-biome overview
+    this.minimap.render(currentTime);
 
     // 2. Camera tracking
     this.camera.update(this.canvas.width, this.canvas.height, dt);

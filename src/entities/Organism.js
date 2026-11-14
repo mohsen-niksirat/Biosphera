@@ -130,6 +130,7 @@ export class Organism {
 
     // 7. REPRODUCTION (Restricted by maturity age, cooldown & local crowd density)
     if (
+      env.allowBirth !== false &&
       splitIntent > 0.35 &&
       this.energy >= this.dna.reproduceThreshold &&
       this.age >= 6.0 &&
@@ -197,7 +198,10 @@ export class Organism {
     this.childrenCount++;
     partner.childrenCount++;
 
-    const childDNA = DNA.crossover(this.dna, partner.dna).mutate(0.08, 0.25);
+    const childDNA = DNA.crossover(this.dna, partner.dna).mutate(
+      Math.min(1, 0.08 * (env.mutationScale ?? 1)),
+      Math.min(1, 0.25 * (env.mutationScale ?? 1))
+    );
     const spawnDist = this.radius + childDNA.size + 4;
     const angle = Math.random() * Math.PI * 2;
     const childX = wrapCoord(this.x + Math.cos(angle) * spawnDist, env.width);
@@ -378,7 +382,8 @@ export class Organism {
 
   reproduce(env = {}) {
     this.reproduceCooldown = 8.0 + Math.random() * 4.0; // 8-12 seconds cooldown
-    const childDNA = this.dna.mutate(0.08, 0.25);
+    const scale = env.mutationScale ?? 1;
+    const childDNA = this.dna.mutate(Math.min(1, 0.08 * scale), Math.min(1, 0.25 * scale));
     const share = Math.min(0.45, Math.max(0.3, this.dna.gestationShare));
     const childEnergy = this.energy * share;
     // Overhead metabolic tax ensures parent is well below reproduction threshold

@@ -18,6 +18,10 @@ Unlike traditional rule-based cellular automata or particle visualizers, each or
 
 ## ✨ Key Features
 
+- **🗺️ Whole-Biome Minimap:** A live overview of the entire 2400×1800 world: organisms by genome hue, vegetation, meat and toxic vents, with the current viewport framed in bio-teal. Click or drag anywhere on the map to jump the camera there (hotkey `G`).
+- **🎛️ World Rules Panel:** Tune the pressures of a run while it is alive: carrying capacity, vegetation ceiling, mutation intensity, current strength and day length. Values are applied immediately and the structural ones travel with exported saves.
+- **📦 Portable Ecosystem Files:** Export the complete biosphere (every genome, brain, pellet and vent) as a `.json` file and import it back on another machine, plus a `.csv` export of the Lotka-Volterra population history for offline analysis.
+- **📊 Generation Distribution:** The Lineage modal now includes a live histogram of living organisms per generation, so population pyramids and generational bottlenecks are visible at a glance.
 - **🧪 Chemical Pheromone Trails (9th Neural Input):** Organisms deposit scent while feeding, breeding and dying into a diffusing two-channel field (food/danger). Newborn brains receive a scent input, so trail-following to feeding grounds and avoiding death zones evolve emergently.
 - **🌊 Ocean Current Flow Field:** A slowly evolving gyre system pushes organisms and drifting food through the water — an ever-changing environmental pressure. Toggle in God Mode.
 - **🌦️ Four-Season Cycle:** Spring → Summer → Autumn → Winter layered on the day/night cycle; each season scales vegetation growth and metabolic burn, forcing periodic adaptation. Lock any season or let it cycle automatically.
@@ -33,7 +37,7 @@ Unlike traditional rule-based cellular automata or particle visualizers, each or
 - **⚔️ Gladiator Arena & Fitness Benchmark:** Put any specimen through a rigorous 3-phase standardized coliseum trial (Foraging speed, Hazard navigation, and Hunter drone evasion) to evaluate its adaptive fitness score (0–100) and award an official Specimen Fitness Certificate (Tier S+, A, B, C, D).
 - **🎨 Interactive God Brush & Shockwave Ripples:** Direct tactile interaction with the living water — switch brushes to sow plant colonies, drop nutrient meat, plant toxic vents, or trigger physical water shockwaves that push organisms and food away!
 - **🔬 Genetic Engineering Laboratory (Gene Lab):** Design custom organisms with real-time swimming preview, interactive trait sliders (size, speed, vision cone, diet niche, hue), and estimated basal/kinetic burn rates before releasing them into the wild.
-- **🏆 Evolutionary Achievements (10 Trophies):** Unlocks persistent trophies as your biosphere hits survival milestones (Century Club, Apex Predator, Master Grazer, Ice Age Survivor, Cosmic Mutant).
+- **🏆 Evolutionary Achievements (12 Trophies):** Unlocks persistent trophies as your biosphere hits survival milestones (Century Club, Apex Predator, Master Grazer, Ice Age Survivor, Cosmic Mutant).
 - **📱 Progressive Web App (PWA):** Installs as a standalone offline desktop/mobile app via `manifest.json` and service worker caching with zero server dependency.
 - **🔬 Microscope Inspector:** Click on any swimming organism to inspect its internal state in real-time:
   - **Live Neural Visualizer:** Animated graph of inputs, hidden neurons, and outputs glowing as synapses fire.
@@ -75,6 +79,7 @@ Biosphera/
 │   ├── engine/
 │   │   ├── SpatialHash.js      # High-performance O(1) neighbor search
 │   │   ├── World.js            # Ecosystem rules, disasters, & presets
+│   │   ├── WorldIO.js          # Portable .json saves & CSV ecology export
 │   │   ├── FlowField.js        # Ocean current gyre system
 │   │   ├── PheromoneField.js   # Two-channel chemical scent grid
 │   │   ├── SeasonCycle.js      # Four-season growth/metabolism cycle
@@ -94,6 +99,9 @@ Biosphera/
 │   └── ui/
 │       ├── Inspector.js       # Microscope panel & live neural visualizer
 │       ├── Controls.js        # Top stats HUD, speed control, & God mode
+│       ├── Minimap.js         # Whole-world map with viewport navigation
+│       ├── WorldSettings.js   # Live carrying capacity, mutation & current controls
+│       ├── dom.js             # Icon / label / modal helpers for the HUD
 │       ├── PopulationChart.js # Real-time predator-prey dynamics chart
 │       ├── EvolutionChart.js  # Genome trait drift over time
 │       ├── GeneLab.js         # Custom organism designer
@@ -104,21 +112,29 @@ Biosphera/
 
 ---
 
-## 🚀 Quick Start (Zero Build Required!)
+## 🚀 Quick Start
 
-Because Biosphera is built with pure modern ES modules, you don't even need to run `npm install`:
+Biosphera ships no runtime dependencies and no bundler requirement. The app is native ES modules, so it needs to be served over HTTP (browsers block module imports from `file://`):
 
-1. **Option A (Instant in Browser):**
-   - Simply double-click `index.html` or open it with **VS Code Live Server**.
-2. **Option B (Any HTTP Server):**
-   ```bash
-   # Python
-   python -m http.server 3000
-   
-   # Or Node.js
-   npx serve .
-   ```
-3. Open `http://localhost:3000` in your browser.
+```bash
+# Python (installed on most systems)
+python -m http.server 3000
+
+# or Node
+npx serve .
+
+# or the Vite dev server from the bundled dev dependencies
+npm install
+npm run dev
+```
+
+Then open `http://localhost:3000`. A production build is optional:
+
+```bash
+npm install
+npm run build     # writes dist/ with hashed assets and a copy of sw.js
+npm run preview
+```
 
 ---
 
@@ -135,6 +151,8 @@ Because Biosphera is built with pure modern ES modules, you don't even need to r
 | **Toggle Sound** | Key `M` or `🔊 Sound` button |
 | **Toggle Day / Night** | Key `N` or `☀️ Day` button |
 | **Cycle View Mode** | Key `V` (Natural ⟷ Sensory Mesh ⟷ Heatmap) |
+| **World Map** | Key `G` or the 🗺️ button |
+| **World Rules** | The sliders button in the top bar |
 | **Ecology Chart** | Key `C` or `📈 Dynamics` button |
 | **Gene Lab** | Key `L` or `🔬 Gene Lab` button |
 | **Achievements** | Key `T` or `🏆 Trophies` button |

@@ -4,6 +4,7 @@
  */
 
 import { DNA } from '../genetics/DNA.js';
+import { openModal, closeModal } from './dom.js';
 
 export class GeneLab {
   constructor(modalId, onSpawnCallback) {
@@ -24,6 +25,8 @@ export class GeneLab {
 
     this.previewPhase = 0;
     this.animFrame = null;
+
+    this.modal?.addEventListener('modal:close', () => this.stopPreview());
 
     this.bindInputs();
   }
@@ -69,18 +72,22 @@ export class GeneLab {
 
   open() {
     if (!this.modal) return;
-    this.modal.style.display = 'flex';
+    openModal(this.modal);
     this.updateMetabolicStats();
     this.startPreviewLoop();
   }
 
-  close() {
-    if (!this.modal) return;
-    this.modal.style.display = 'none';
+  stopPreview() {
     if (this.animFrame) {
       cancelAnimationFrame(this.animFrame);
       this.animFrame = null;
     }
+  }
+
+  close() {
+    if (!this.modal) return;
+    closeModal(this.modal);
+    this.stopPreview();
   }
 
   updateMetabolicStats() {
@@ -98,13 +105,13 @@ export class GeneLab {
 
     if (elDiet) {
       if (this.traits.diet < -0.2) {
-        elDiet.innerText = '🌿 Herbivore';
+        elDiet.innerHTML = '<i class="dot dot-herb"></i>Herbivore';
         elDiet.className = 'badge badge-herbivore';
       } else if (this.traits.diet > 0.2) {
-        elDiet.innerText = '🥩 Carnivore';
+        elDiet.innerHTML = '<i class="dot dot-carn"></i>Carnivore';
         elDiet.className = 'badge badge-carnivore';
       } else {
-        elDiet.innerText = '🌾 Omnivore';
+        elDiet.innerHTML = '<i class="dot dot-omni"></i>Omnivore';
         elDiet.className = 'badge badge-omnivore';
       }
     }
@@ -130,7 +137,7 @@ export class GeneLab {
     ctx.clearRect(0, 0, w, h);
 
     // Deep water circular dish
-    ctx.fillStyle = '#060a14';
+    ctx.fillStyle = '#02060d';
     ctx.fillRect(0, 0, w, h);
 
     ctx.save();
@@ -147,9 +154,9 @@ export class GeneLab {
       this.traits.sensorFov * 0.5
     );
     ctx.closePath();
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+    ctx.fillStyle = 'rgba(63, 224, 208, 0.12)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+    ctx.strokeStyle = 'rgba(63, 224, 208, 0.35)';
     ctx.stroke();
 
     // Multi-segment tail
@@ -175,19 +182,19 @@ export class GeneLab {
     ctx.ellipse(0, 0, this.traits.size * 1.15, this.traits.size * 0.85, 0, 0, Math.PI * 2);
     ctx.fillStyle = `hsl(${this.traits.colorHue}, 75%, 55%)`;
     ctx.fill();
-    ctx.strokeStyle = this.traits.diet > 0.2 ? '#f43f5e' : (this.traits.diet < -0.2 ? '#10b981' : '#facc15');
+    ctx.strokeStyle = this.traits.diet > 0.2 ? '#fb7185' : (this.traits.diet < -0.2 ? '#34d399' : '#fbbf24');
     ctx.lineWidth = 1.8;
     ctx.stroke();
 
     // Eyes
     const eyeX = this.traits.size * 0.6;
     const eyeY = this.traits.size * 0.45;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#dcecf2';
     ctx.beginPath();
     ctx.arc(eyeX, -eyeY, 2.8, 0, Math.PI * 2);
     ctx.arc(eyeX, eyeY, 2.8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = '#050d14';
     ctx.beginPath();
     ctx.arc(eyeX + 1, -eyeY, 1.4, 0, Math.PI * 2);
     ctx.arc(eyeX + 1, eyeY, 1.4, 0, Math.PI * 2);

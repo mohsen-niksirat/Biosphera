@@ -40,11 +40,11 @@ export class Renderer {
     const isBioluminescent = lighting.isBioluminescent || this.viewMode === 'heatmap';
 
     // 1. CLEAR & BACKGROUND
-    ctx.fillStyle = lighting.darkness > 0.4 ? '#02050e' : '#050914';
+    ctx.fillStyle = lighting.darkness > 0.4 ? '#02060d' : '#050d14';
     ctx.fillRect(0, 0, width, height);
 
     ctx.save();
-    ctx.scale(this.camera.zoom, this.camera.zoom);
+    ctx.scale(this.camera.scale, this.camera.scale);
     ctx.translate(-this.camera.x, -this.camera.y);
 
     // 2. WORLD BOUNDARY & GRID
@@ -59,8 +59,8 @@ export class Renderer {
       const pulse = 1 + Math.sin(h.pulsePhase) * 0.08;
 
       const grad = ctx.createRadialGradient(h.x, h.y, 5, h.x, h.y, h.radius * pulse);
-      grad.addColorStop(0, 'rgba(239, 68, 68, 0.45)');
-      grad.addColorStop(0.6, 'rgba(185, 28, 28, 0.2)');
+      grad.addColorStop(0, 'rgba(251, 113, 133, 0.42)');
+      grad.addColorStop(0.6, 'rgba(190, 24, 93, 0.18)');
       grad.addColorStop(1, 'rgba(127, 29, 29, 0)');
 
       ctx.fillStyle = grad;
@@ -68,15 +68,15 @@ export class Renderer {
       ctx.arc(h.x, h.y, h.radius * pulse, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.fillStyle = '#ef4444';
+      ctx.fillStyle = '#fb7185';
       ctx.beginPath();
       ctx.arc(h.x, h.y, 4, 0, Math.PI * 2);
       ctx.fill();
     }
 
     // 5. FOOD (High performance batch rendering for silky 60 FPS)
-    const plantColor = isBioluminescent ? '#34d399' : '#10b981';
-    const meatColor = '#f43f5e';
+    const plantColor = '#34d399';
+    const meatColor = '#fb7185';
 
     // Batch draw plants
     ctx.beginPath();
@@ -92,7 +92,7 @@ export class Renderer {
     if (hasPlants) {
       ctx.fillStyle = plantColor;
       if (isBioluminescent && world.foods.length < 100) {
-        ctx.shadowColor = '#10b981';
+        ctx.shadowColor = '#34d399';
         ctx.shadowBlur = 8;
       }
       ctx.fill();
@@ -113,7 +113,7 @@ export class Renderer {
     if (hasMeats) {
       ctx.fillStyle = meatColor;
       if (isBioluminescent && world.foods.length < 100) {
-        ctx.shadowColor = '#f43f5e';
+        ctx.shadowColor = '#fb7185';
         ctx.shadowBlur = 10;
       }
       ctx.fill();
@@ -172,20 +172,22 @@ export class Renderer {
 
   drawAmbientPlankton(world, isBioluminescent) {
     const ctx = this.ctx;
-    ctx.fillStyle = isBioluminescent ? '#38bdf8' : 'rgba(56, 189, 248, 0.7)';
+    ctx.fillStyle = isBioluminescent ? '#3fe0d0' : 'rgba(63, 224, 208, 0.7)';
     const flow = world.flow;
 
     for (let i = 0; i < this.ambientParticles.length; i++) {
       const pt = this.ambientParticles[i];
 
-      if (flow) {
-        // Plankton rides the water currents
-        const f = flow.sample(pt.x, pt.y);
-        pt.x = (pt.x + f.vx * 0.05 + world.width) % world.width;
-        pt.y = (pt.y + f.vy * 0.05 + world.height) % world.height;
-      } else {
-        pt.x = (pt.x + Math.cos(pt.angle) * pt.speed + world.width) % world.width;
-        pt.y = (pt.y + Math.sin(pt.angle) * pt.speed + world.height) % world.height;
+      if (!world.isPaused) {
+        if (flow) {
+          // Plankton rides the water currents
+          const f = flow.sample(pt.x, pt.y);
+          pt.x = (pt.x + f.vx * 0.05 + world.width) % world.width;
+          pt.y = (pt.y + f.vy * 0.05 + world.height) % world.height;
+        } else {
+          pt.x = (pt.x + Math.cos(pt.angle) * pt.speed + world.width) % world.width;
+          pt.y = (pt.y + Math.sin(pt.angle) * pt.speed + world.height) % world.height;
+        }
       }
 
       if (!this.isInView(pt.x, pt.y, pt.r)) continue;
@@ -200,27 +202,29 @@ export class Renderer {
 
   drawWorldGrid(world) {
     const ctx = this.ctx;
-    ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+    ctx.strokeStyle = 'rgba(220, 236, 242, 0.07)';
     ctx.lineWidth = 1;
 
     const gridSize = 100;
+    const viewW = this.canvas.width / this.camera.scale;
+    const viewH = this.canvas.height / this.camera.scale;
     const startX = Math.floor(Math.max(0, this.camera.x) / gridSize) * gridSize;
-    const endX = Math.min(world.width, this.camera.x + this.canvas.width / this.camera.zoom);
+    const endX = Math.min(world.width, this.camera.x + viewW);
     const startY = Math.floor(Math.max(0, this.camera.y) / gridSize) * gridSize;
-    const endY = Math.min(world.height, this.camera.y + this.canvas.height / this.camera.zoom);
+    const endY = Math.min(world.height, this.camera.y + viewH);
 
     ctx.beginPath();
     for (let x = startX; x <= endX; x += gridSize) {
       ctx.moveTo(x, Math.max(0, this.camera.y));
-      ctx.lineTo(x, Math.min(world.height, this.camera.y + this.canvas.height / this.camera.zoom));
+      ctx.lineTo(x, Math.min(world.height, this.camera.y + viewH));
     }
     for (let y = startY; y <= endY; y += gridSize) {
       ctx.moveTo(Math.max(0, this.camera.x), y);
-      ctx.lineTo(Math.min(world.width, this.camera.x + this.canvas.width / this.camera.zoom), y);
+      ctx.lineTo(Math.min(world.width, this.camera.x + viewW), y);
     }
     ctx.stroke();
 
-    ctx.strokeStyle = '#38bdf8';
+    ctx.strokeStyle = 'rgba(63, 224, 208, 0.55)';
     ctx.lineWidth = 3;
     ctx.strokeRect(0, 0, world.width, world.height);
   }
@@ -245,9 +249,9 @@ export class Renderer {
         org.heading + org.dna.sensorFov * 0.5
       );
       ctx.closePath();
-      ctx.fillStyle = isSelected ? 'rgba(56, 189, 248, 0.14)' : 'rgba(255, 255, 255, 0.04)';
+      ctx.fillStyle = isSelected ? 'rgba(63, 224, 208, 0.14)' : 'rgba(220, 236, 242, 0.04)';
       ctx.fill();
-      ctx.strokeStyle = isSelected ? 'rgba(56, 189, 248, 0.45)' : 'rgba(255, 255, 255, 0.12)';
+      ctx.strokeStyle = isSelected ? 'rgba(63, 224, 208, 0.45)' : 'rgba(220, 236, 242, 0.12)';
       ctx.lineWidth = 1;
       ctx.stroke();
 
@@ -256,7 +260,7 @@ export class Renderer {
         ctx.moveTo(0, 0);
         // Relative wrapped vector to the target — stays correct across the seam
         ctx.lineTo(org.nearestTarget.dx, org.nearestTarget.dy);
-        ctx.strokeStyle = org.nearestTarget.type === 'plant' ? '#10b981' : '#f43f5e';
+        ctx.strokeStyle = org.nearestTarget.type === 'plant' ? '#34d399' : '#fb7185';
         ctx.setLineDash([3, 3]);
         ctx.stroke();
         ctx.setLineDash([]);
@@ -266,7 +270,7 @@ export class Renderer {
 
     // B. TARGET RETICLE
     if (isSelected) {
-      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeStyle = '#3fe0d0';
       ctx.lineWidth = 1.5;
       const reticleR = org.radius + 14;
       ctx.beginPath();
@@ -314,7 +318,7 @@ export class Renderer {
     // Bioluminescent glow or Heatmap
     if (this.viewMode === 'heatmap') {
       const speed = Math.hypot(org.vx, org.vy);
-      ctx.fillStyle = speed > 150 ? '#f43f5e' : (speed > 72 ? '#facc15' : '#38bdf8');
+      ctx.fillStyle = speed > 150 ? '#fb7185' : (speed > 72 ? '#fbbf24' : '#3fe0d0');
       ctx.shadowColor = ctx.fillStyle;
       ctx.shadowBlur = 16;
     } else if (isBioluminescent) {
@@ -329,7 +333,7 @@ export class Renderer {
     ctx.fill();
     ctx.shadowBlur = 0; // reset
 
-    ctx.strokeStyle = org.dna.diet > 0.2 ? '#f43f5e' : (org.dna.diet < -0.2 ? '#10b981' : '#facc15');
+    ctx.strokeStyle = org.dna.diet > 0.2 ? '#fb7185' : (org.dna.diet < -0.2 ? '#34d399' : '#fbbf24');
     ctx.lineWidth = 1.6;
     ctx.stroke();
 
@@ -344,13 +348,13 @@ export class Renderer {
     // F. EYES
     const eyeOffsetX = org.radius * 0.6;
     const eyeOffsetY = org.radius * 0.45;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#dcecf2';
     ctx.beginPath();
     ctx.arc(eyeOffsetX, -eyeOffsetY, 2.5, 0, Math.PI * 2);
     ctx.arc(eyeOffsetX, eyeOffsetY, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = '#050d14';
     ctx.beginPath();
     ctx.arc(eyeOffsetX + 1, -eyeOffsetY, 1.2, 0, Math.PI * 2);
     ctx.arc(eyeOffsetX + 1, eyeOffsetY, 1.2, 0, Math.PI * 2);
@@ -361,9 +365,9 @@ export class Renderer {
 
   isInView(x, y, radius) {
     const left = this.camera.x - radius;
-    const right = this.camera.x + this.canvas.width / this.camera.zoom + radius;
+    const right = this.camera.x + this.canvas.width / this.camera.scale + radius;
     const top = this.camera.y - radius;
-    const bottom = this.camera.y + this.canvas.height / this.camera.zoom + radius;
+    const bottom = this.camera.y + this.canvas.height / this.camera.scale + radius;
     return x >= left && x <= right && y >= top && y <= bottom;
   }
 }

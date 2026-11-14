@@ -3,6 +3,7 @@
  */
 
 import { DNA } from '../genetics/DNA.js';
+import { setIcon, setLabel, setPressed, openModal, closeModal } from './dom.js';
 
 export class Controls {
   constructor(world, soundEngine) {
@@ -20,18 +21,22 @@ export class Controls {
     const btnPlayPause = document.getElementById('btn-play-pause');
     btnPlayPause?.addEventListener('click', () => {
       this.world.isPaused = !this.world.isPaused;
-      if (btnPlayPause) {
-        btnPlayPause.innerText = this.world.isPaused ? '▶ Resume' : '⏸ Pause';
-      }
+      setIcon(btnPlayPause, this.world.isPaused ? 'i-play' : 'i-pause');
+      setLabel(btnPlayPause, this.world.isPaused ? 'Resume' : 'Pause');
+      setPressed(btnPlayPause, !this.world.isPaused);
     });
 
     // Speed Multipliers
     const speedButtons = document.querySelectorAll('.btn-speed');
     speedButtons.forEach(btn => {
       btn.addEventListener('click', (e) => {
-        speedButtons.forEach(b => b.classList.remove('active'));
+        speedButtons.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
         const target = e.currentTarget;
         target.classList.add('active');
+        target.setAttribute('aria-pressed', 'true');
         const speed = parseFloat(target.dataset.speed || '1');
         this.world.timeScale = speed;
       });
@@ -42,9 +47,11 @@ export class Controls {
     btnSound?.addEventListener('click', () => {
       if (this.soundEngine) {
         const isAudible = this.soundEngine.toggleMute();
-        btnSound.innerText = isAudible ? '🔊 Sound: On' : '🔇 Sound: Off';
+        setIcon(btnSound, isAudible ? 'i-volume-on' : 'i-volume-off');
+        setLabel(btnSound, isAudible ? 'Sound: On' : 'Sound: Off');
         btnSound.classList.toggle('active', isAudible);
-        this.showToast(isAudible ? '🎵 Audio soundscape activated' : '🔇 Audio muted');
+        setPressed(btnSound, isAudible);
+        this.showToast(isAudible ? 'Audio soundscape activated' : 'Audio muted');
       }
     });
 
@@ -54,7 +61,7 @@ export class Controls {
       const preset = e.target.value;
       if (confirm(`Switch scenario to "${e.target.options[e.target.selectedIndex].text}"? This will reset the population.`)) {
         this.world.loadPreset(preset);
-        this.showToast(`🌍 Loaded Scenario: ${e.target.options[e.target.selectedIndex].text}`);
+        this.showToast(`Loaded scenario: ${e.target.options[e.target.selectedIndex].text}`);
       } else {
         selectScenario.value = this.world.currentPreset;
       }
@@ -73,22 +80,22 @@ export class Controls {
     // Environmental Interventions (God Mode)
     document.getElementById('btn-ice-age')?.addEventListener('click', () => {
       this.world.triggerIceAge();
-      this.showToast('❄️ Ice Age triggered! Plant growth frozen.');
+      this.showToast('Ice age triggered. Plant growth frozen.');
     });
 
     document.getElementById('btn-food-bloom')?.addEventListener('click', () => {
       const added = this.world.triggerFoodSurge();
-      this.showToast(`🍃 Food Bloom! ${added} plant nutrients sprouted.`);
+      this.showToast(`Food bloom: ${added} plants sprouted.`);
     });
 
     document.getElementById('btn-radiation')?.addEventListener('click', () => {
       this.world.triggerRadiationFlare();
-      this.showToast('☢️ Cosmic Radiation Flare! Rapid genetic mutations triggered.');
+      this.showToast('Radiation flare. Rapid mutations triggered.');
     });
 
     document.getElementById('btn-toxic-vent')?.addEventListener('click', () => {
       this.world.triggerToxicBloom();
-      this.showToast('🧪 New toxic thermal vent formed.');
+      this.showToast('New toxic thermal vent formed.');
     });
 
     // Water currents toggle
@@ -96,7 +103,8 @@ export class Controls {
     btnCurrents?.addEventListener('click', () => {
       this.world.currentStrength = this.world.currentStrength > 0 ? 0 : 0.9;
       btnCurrents.classList.toggle('active', this.world.currentStrength > 0);
-      this.showToast(this.world.currentStrength > 0 ? '🌊 Ocean currents unleashed!' : '🪞 Water stilled.');
+      setPressed(btnCurrents, this.world.currentStrength > 0);
+      this.showToast(this.world.currentStrength > 0 ? 'Ocean currents unleashed.' : 'Water stilled.');
     });
 
     // Sexual reproduction toggle
@@ -104,9 +112,10 @@ export class Controls {
     btnMating?.addEventListener('click', () => {
       this.world.sexualReproduction = !this.world.sexualReproduction;
       btnMating.classList.toggle('active', this.world.sexualReproduction);
+      setPressed(btnMating, this.world.sexualReproduction);
       this.showToast(this.world.sexualReproduction
-        ? '💑 Sexual reproduction ON — genomes recombine with a mate.'
-        : '🧬 Parthenogenesis restored — offspring are cloned+mutated.');
+        ? 'Sexual reproduction on. Genomes recombine with a mate.'
+        : 'Parthenogenesis restored. Offspring are cloned and mutated.');
     });
 
     // Season cycle (delegated to main app)
@@ -120,13 +129,13 @@ export class Controls {
 
     document.getElementById('btn-spawn-more')?.addEventListener('click', () => {
       this.world.spawnRandomPopulation(20);
-      this.showToast('🧬 Injected 20 new diverse genesis organisms.');
+      this.showToast('20 diverse genesis organisms injected.');
     });
 
     document.getElementById('btn-reset-world')?.addEventListener('click', () => {
       if (confirm('Reset entire ecosystem to initial state?')) {
         this.world.clearAll();
-        this.showToast('🔄 Ecosystem re-seeded.');
+        this.showToast('Ecosystem re-seeded.');
       }
     });
 
@@ -138,12 +147,12 @@ export class Controls {
     const dnaInput = document.getElementById('dna-textarea');
 
     btnOpenImport?.addEventListener('click', () => {
-      if (modal) modal.style.display = 'flex';
+      if (modal) openModal(modal);
       if (dnaInput) dnaInput.value = '';
     });
 
     btnCloseModal?.addEventListener('click', () => {
-      if (modal) modal.style.display = 'none';
+      closeModal(modal);
     });
 
     btnSubmitDNA?.addEventListener('click', () => {
@@ -153,8 +162,8 @@ export class Controls {
       const dna = DNA.deserialize(val);
       if (dna) {
         this.onImportDNA?.(dna);
-        if (modal) modal.style.display = 'none';
-        this.showToast('🧬 Custom organism imported into biosphere!');
+        closeModal(modal);
+        this.showToast('Custom organism imported into biosphere!');
       } else {
         alert('Invalid DNA string format. Paste a Base64 string exported from Biosphera.');
       }
@@ -170,9 +179,12 @@ export class Controls {
     const elFps = document.getElementById('stat-fps');
 
     if (elPop) elPop.innerText = stats.population.toString();
-    if (elGen) elGen.innerText = `Gen ${stats.maxGeneration}`;
+    if (elGen) elGen.innerText = stats.maxGeneration.toString();
     if (elEcosystem) {
-      elEcosystem.innerHTML = `<span>🌿${stats.herbivores}</span> <span>🥩${stats.carnivores}</span> <span>🌾${stats.omnivores}</span>`;
+      elEcosystem.innerHTML = `
+        <span class="diet-legend"><i class="dot dot-herb"></i>${stats.herbivores}</span>
+        <span class="diet-legend"><i class="dot dot-carn"></i>${stats.carnivores}</span>
+        <span class="diet-legend"><i class="dot dot-omni"></i>${stats.omnivores}</span>`;
     }
     if (elFood) elFood.innerText = stats.foodCount.toString();
     if (elLifespan) elLifespan.innerText = `${stats.avgLifespan}s`;

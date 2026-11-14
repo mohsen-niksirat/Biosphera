@@ -18,10 +18,13 @@ export class PopulationChart {
     this.lastRecordTime = now;
 
     this.history.push({
+      t: now,
       herbivores: stats.herbivores,
       carnivores: stats.carnivores,
       omnivores: stats.omnivores,
-      food: Math.min(stats.population * 2.5, stats.foodCount * 0.4) // Scaled for comparison
+      // Scaled series for the chart; raw plant count kept for CSV export
+      food: Math.min(stats.population * 2.5, stats.foodCount * 0.4),
+      plants: stats.foodCount
     });
 
     if (this.history.length > this.maxHistory) {
@@ -29,6 +32,26 @@ export class PopulationChart {
     }
 
     this.render();
+  }
+
+  reset() {
+    this.history = [];
+    this.lastRecordTime = 0;
+    if (this.ctx && this.canvas) {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+  }
+
+  /** Population history as CSV, with a relative time axis in seconds. */
+  csv() {
+    if (!this.canvas || this.history.length === 0) return null;
+    const t0 = this.history[0].t;
+    const rows = ['time_s,herbivores,carnivores,omnivores,plants'];
+    for (const pt of this.history) {
+      const time = ((pt.t - t0) / 1000).toFixed(1);
+      rows.push(`${time},${pt.herbivores},${pt.carnivores},${pt.omnivores},${pt.plants ?? ''}`);
+    }
+    return rows.join('\n');
   }
 
   render() {
@@ -76,9 +99,9 @@ export class PopulationChart {
     };
 
     // Draw lines
-    drawSeries('rgba(16, 185, 129, 0.4)', 'food', [2, 2]); // Dotted vegetation
-    drawSeries('#10b981', 'herbivores');                    // Solid Green
-    drawSeries('#f43f5e', 'carnivores');                    // Solid Red
-    drawSeries('#facc15', 'omnivores');                     // Solid Gold
+    drawSeries('rgba(52, 211, 153, 0.45)', 'food', [2, 2]); // Dotted vegetation
+    drawSeries('#34d399', 'herbivores');                     // Solid green
+    drawSeries('#fb7185', 'carnivores');                     // Solid rose
+    drawSeries('#fbbf24', 'omnivores');                      // Solid amber
   }
 }

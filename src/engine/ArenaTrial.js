@@ -10,6 +10,7 @@ import { Organism } from '../entities/Organism.js';
 import { Food } from '../entities/Food.js';
 import { Hazard } from '../entities/Hazard.js';
 import { wrapDelta } from './wrapDelta.js';
+import { openModal, closeModal } from '../ui/dom.js';
 
 export class ArenaTrial {
   constructor(modalId, soundEngine, onCompleteCallback) {
@@ -37,6 +38,7 @@ export class ArenaTrial {
   }
 
   bindEvents() {
+    this.modal?.addEventListener('modal:close', () => this.stop());
     document.getElementById('btn-close-arena')?.addEventListener('click', () => {
       this.stop();
     });
@@ -56,6 +58,7 @@ export class ArenaTrial {
     if (!this.modal || !this.canvas) return;
 
     this.modal.style.display = 'flex';
+    openModal(this.modal);
     document.getElementById('arena-results')?.classList.remove('show');
     document.getElementById('arena-live-hud')?.classList.add('show');
 
@@ -165,7 +168,8 @@ export class ArenaTrial {
     }
     if (elFoodCount) elFoodCount.innerText = this.plantsEaten.toString();
     if (elHealthBar && this.testSubject) {
-      const pct = Math.max(0, Math.min(100, (this.testSubject.energy / 120) * 100));
+      const ceiling = Math.max(1, this.testSubject.maxEnergy || this.testSubject.dna.reproduceThreshold);
+      const pct = Math.max(0, Math.min(100, (this.testSubject.energy / ceiling) * 100));
       elHealthBar.style.width = `${pct}%`;
     }
 
@@ -189,26 +193,26 @@ export class ArenaTrial {
     const survivedTime = Math.min(this.maxDuration, this.timer);
     const timeScore = (survivedTime / this.maxDuration) * 40;
     const foragingScore = Math.min(40, this.plantsEaten * 3.5);
-    const healthBonus = this.testSubject.isDead ? 0 : Math.min(20, (this.testSubject.energy / 120) * 20);
+    const healthBonus = this.testSubject.isDead ? 0 : Math.min(20, (this.testSubject.energy / Math.max(1, this.testSubject.maxEnergy)) * 20);
     const totalScore = Math.round(timeScore + foragingScore + healthBonus);
 
     let grade = 'Tier C';
-    let gradeColor = '#94a3b8';
+    let gradeColor = '#8fa9b3';
     if (totalScore >= 90) {
       grade = 'Tier S+ (Apex Specimen)';
-      gradeColor = '#38bdf8';
+      gradeColor = '#3fe0d0';
     } else if (totalScore >= 78) {
       grade = 'Tier A (Highly Adapted)';
-      gradeColor = '#10b981';
+      gradeColor = '#34d399';
     } else if (totalScore >= 60) {
       grade = 'Tier B (Viable Organism)';
-      gradeColor = '#facc15';
+      gradeColor = '#fbbf24';
     } else if (totalScore >= 40) {
       grade = 'Tier C (Sub-optimal)';
       gradeColor = '#fb923c';
     } else {
       grade = 'Tier D (Evolutionary Dead-End)';
-      gradeColor = '#f43f5e';
+      gradeColor = '#fb7185';
     }
 
     // Display Results Certificate
@@ -243,6 +247,6 @@ export class ArenaTrial {
       cancelAnimationFrame(this.animFrame);
       this.animFrame = null;
     }
-    if (this.modal) this.modal.style.display = 'none';
+    if (this.modal) closeModal(this.modal);
   }
 }

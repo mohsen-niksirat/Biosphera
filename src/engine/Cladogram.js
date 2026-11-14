@@ -30,7 +30,10 @@ export class Cladogram {
           if (node.orgRef && !node.orgRef.isDead) {
             this.onSelect?.(node.orgRef);
             const modal = document.getElementById('lineage-modal');
-            if (modal) modal.style.display = 'none';
+            if (modal) {
+              modal.style.display = 'none';
+              modal.setAttribute('aria-hidden', 'true');
+            }
           }
           break;
         }
@@ -41,9 +44,25 @@ export class Cladogram {
   rebuildTree(world) {
     if (!this.canvas || !this.ctx) return;
 
+    // Size the backing store to the dialog width so node labels and the
+    // generation caption stay legible on phones (the CSS used to scale a
+    // fixed 600x340 canvas down to roughly half size).
+    const rect = this.canvas.getBoundingClientRect();
+    const cssW = Math.max(280, Math.round(rect.width || 600));
+    const cssH = Math.round(Math.min(360, Math.max(260, cssW * 0.5)));
+    if (this.canvas.width !== cssW || this.canvas.height !== cssH) {
+      this.canvas.width = cssW;
+      this.canvas.height = cssH;
+    }
+    this.canvas.style.height = `${cssH}px`;
+
     // Group living organisms by lineage / lineage clusters
     const living = world.organisms;
-    if (living.length === 0) return;
+    if (living.length === 0) {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.nodes = [];
+      return;
+    }
 
     // Build unique species clusters based on color hue & generation
     const lineageMap = new Map();
@@ -84,16 +103,27 @@ export class Cladogram {
 
     const positioned = [];
     const span = Math.max(1, maxGen - minGen);
+    const maxRows = 8;
 
     genBuckets.forEach((list, gen) => {
-      const colX = 50 + ((gen - minGen) / span) * (w - 100);
-      const totalInCol = list.length;
+      // A single generation (fresh world) should sit in the middle of the tree;
+      // otherwise columns span the plot from left to right.
+      const baseX = minGen === maxGen
+        ? w * 0.5
+        : 50 + ((gen - minGen) / span) * (w - 100);
+      const groups = Math.ceil(list.length / maxRows);
+      const spread = Math.min(38, 110 / groups);
 
-      for (let i = 0; i < totalInCol; i++) {
-        const rowY = 40 + ((i + 0.5) / totalInCol) * (h - 80);
-        list[i].x = colX;
-        list[i].y = rowY;
-        positioned.push(list[i]);
+      for (let g = 0; g < groups; g++) {
+        const slice = list.slice(g * maxRows, (g + 1) * maxRows);
+        const colX = baseX + (g - (groups - 1) / 2) * spread;
+
+        for (let i = 0; i < slice.length; i++) {
+          const rowY = 40 + ((i + 0.5) / slice.length) * (h - 80);
+          slice[i].x = colX;
+          slice[i].y = rowY;
+          positioned.push(slice[i]);
+        }
       }
     });
 
@@ -109,19 +139,22 @@ export class Cladogram {
     ctx.clearRect(0, 0, w, h);
 
     // Background grid & labels
-    ctx.fillStyle = '#060a14';
+    ctx.fillStyle = '#02060d';
     ctx.fillRect(0, 0, w, h);
 
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+    ctx.fillStyle = 'rgba(143, 169, 179, 0.55)';
     ctx.font = '11px sans-serif';
     // Reset alignment: the node loop below leaves textAlign='center' behind,
     // which would clip this header on every render after the first.
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText(`Ancestral Lineage (Generations ${minGen} ⟷ ${maxGen})`, 20, 24);
+    const caption = minGen === maxGen
+      ? `Ancestral Lineage (Generation ${minGen})`
+      : `Ancestral Lineage (Generations ${minGen} to ${maxGen})`;
+    ctx.fillText(caption, 20, 24);
 
     // Draw branch connecting lines
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.strokeStyle = 'rgba(63, 224, 208, 0.22)';
     ctx.lineWidth = 1.2;
 
     for (const node of this.nodes) {
@@ -173,12 +206,12 @@ export class Cladogram {
 
       ctx.shadowBlur = 0; // reset
 
-      ctx.strokeStyle = node.diet > 0.2 ? '#f43f5e' : (node.diet < -0.2 ? '#10b981' : '#facc15');
+      ctx.strokeStyle = node.diet > 0.2 ? '#fb7185' : (node.diet < -0.2 ? '#34d399' : '#fbbf24');
       ctx.lineWidth = 1.8;
       ctx.stroke();
 
       // Population count label
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#dcecf2';
       ctx.font = '9px monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';

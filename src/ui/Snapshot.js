@@ -29,8 +29,8 @@ export class SnapshotExporter {
       const barX = 16 * scale;
 
       ctx.save();
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.fillStyle = 'rgba(12, 26, 36, 0.88)';
+      ctx.strokeStyle = 'rgba(63, 224, 208, 0.32)';
       ctx.lineWidth = 1 * scale;
 
       // Rounded rectangle (roundRect needs Chrome 99+/Safari 16+; arcTo covers the rest)
@@ -50,11 +50,11 @@ export class SnapshotExporter {
       ctx.stroke();
 
       // Text metadata
-      ctx.fillStyle = '#f8fafc';
+      ctx.fillStyle = '#dcecf2';
       ctx.font = `bold ${13 * scale}px system-ui, sans-serif`;
-      ctx.fillText(`🧬 Biosphera  •  Gen ${world.maxGeneration}  •  Pop ${world.organisms.length}`, barX + 16 * scale, barY + 20 * scale);
+      ctx.fillText(`Biosphera  |  Gen ${world.maxGeneration}  |  Pop ${world.organisms.length}`, barX + 16 * scale, barY + 20 * scale);
 
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = '#8fa9b3';
       ctx.font = `${11 * scale}px monospace`;
       ctx.fillText('github.com/mohsen-niksirat/Biosphera', barX + 16 * scale, barY + 36 * scale);
       ctx.restore();
@@ -66,7 +66,7 @@ export class SnapshotExporter {
       link.href = dataUrl;
       link.click();
 
-      showToastCallback?.('📸 Ecosystem snapshot saved to downloads!');
+      showToastCallback?.('Ecosystem snapshot saved to downloads!');
     } catch (e) {
       console.error('Failed to capture snapshot:', e);
       showToastCallback?.('Failed to export snapshot.');

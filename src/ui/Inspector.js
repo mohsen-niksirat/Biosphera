@@ -10,8 +10,8 @@ export class Inspector {
 
     this.container.innerHTML = `
       <div class="inspector-header">
-        <h3>🔬 Microscope Inspector</h3>
-        <button id="close-inspector" class="btn-icon" aria-label="Close inspector">&times;</button>
+        <h3><svg class="icon icon-sm" aria-hidden="true"><use href="#i-eye"/></svg> Microscope Inspector</h3>
+        <button id="close-inspector" class="btn-icon" aria-label="Close inspector"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-x"/></svg></button>
       </div>
       <div class="empty-state" id="inspector-empty">Click any swimming organism to inspect its brain & DNA</div>
       <div class="inspector-body" id="inspector-content" style="display: none;">
@@ -86,10 +86,10 @@ export class Inspector {
 
   renderStats(org) {
     const dietLabel = org.dna.diet < -0.2
-      ? '<span class="badge badge-herbivore">🌿 Herbivore</span>'
+      ? '<span class="badge badge-herbivore"><i class="dot dot-herb"></i>Herbivore</span>'
       : (org.dna.diet > 0.2
-        ? '<span class="badge badge-carnivore">🥩 Carnivore</span>'
-        : '<span class="badge badge-omnivore">🌾 Omnivore</span>');
+        ? '<span class="badge badge-carnivore"><i class="dot dot-carn"></i>Carnivore</span>'
+        : '<span class="badge badge-omnivore"><i class="dot dot-omni"></i>Omnivore</span>');
 
     this.statsContainer.innerHTML = `
       <div class="stat-item">
@@ -140,11 +140,11 @@ export class Inspector {
 
   renderActions(org) {
     this.actionsContainer.innerHTML = `
-      <button id="btn-arena" class="btn btn-secondary btn-sm" style="grid-column: span 2; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;">⚔️ Arena Benchmark Trial</button>
-      <button id="btn-follow" class="btn btn-secondary btn-sm">🎯 Follow</button>
-      <button id="btn-clone" class="btn btn-secondary btn-sm">🧬 Clone</button>
-      <button id="btn-export" class="btn btn-primary btn-sm">📤 Export DNA</button>
-      <button id="btn-kill" class="btn btn-danger btn-sm">💀 Terminate</button>
+      <button id="btn-arena" class="btn btn-secondary btn-sm" style="grid-column: span 2;"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-zap"/></svg>Arena Benchmark</button>
+      <button id="btn-follow" class="btn btn-secondary btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-target"/></svg>Follow</button>
+      <button id="btn-clone" class="btn btn-secondary btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-dna"/></svg>Clone</button>
+      <button id="btn-export" class="btn btn-primary btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-upload"/></svg>Export DNA</button>
+      <button id="btn-kill" class="btn btn-danger btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-x"/></svg>Terminate</button>
     `;
 
     document.getElementById('btn-arena')?.addEventListener('click', () => {
@@ -215,8 +215,8 @@ export class Inspector {
 
           const alpha = Math.min(0.8, Math.abs(weight) * 0.4);
           ctx.strokeStyle = weight > 0
-            ? `rgba(56, 189, 248, ${alpha})`
-            : `rgba(244, 63, 94, ${alpha})`;
+            ? `rgba(63, 224, 208, ${alpha})`
+            : `rgba(251, 113, 133, ${alpha})`;
           ctx.lineWidth = Math.min(2.5, Math.max(0.5, Math.abs(weight)));
           ctx.stroke();
         }
@@ -236,13 +236,13 @@ export class Inspector {
         ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
 
         if (act > 0) {
-          ctx.fillStyle = `rgba(56, 189, 248, ${0.3 + act * 0.7})`;
+          ctx.fillStyle = `rgba(63, 224, 208, ${0.3 + act * 0.7})`;
         } else {
-          ctx.fillStyle = `rgba(244, 63, 94, ${0.3 + Math.abs(act) * 0.7})`;
+          ctx.fillStyle = `rgba(251, 113, 133, ${0.3 + Math.abs(act) * 0.7})`;
         }
         ctx.fill();
 
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = 'rgba(220, 236, 242, 0.28)';
         ctx.lineWidth = 1;
         ctx.stroke();
       }

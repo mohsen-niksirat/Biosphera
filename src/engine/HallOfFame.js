@@ -80,12 +80,12 @@ export class HallOfFame {
 
   renderHTML() {
     const rows = [
-      ['👴 Longest Lived', 'oldestAge', 's'],
-      ['🐣 Most Offspring', 'mostChildren', 'children'],
-      ['⚔️ Deadliest Hunter', 'mostKills', 'kills'],
-      ['🍃 Most Plants Eaten', 'mostPlants', 'units'],
-      ['📈 Peak Population', 'peakPopulation', 'organisms'],
-      ['🌳 Deepest Generation', 'maxGeneration', 'gen']
+      ['Longest lived', 'oldestAge', 's'],
+      ['Most offspring', 'mostChildren', 'children'],
+      ['Deadliest hunter', 'mostKills', 'kills'],
+      ['Most plants eaten', 'mostPlants', 'units'],
+      ['Peak population', 'peakPopulation', 'organisms'],
+      ['Deepest generation', 'maxGeneration', 'gen']
     ];
 
     return rows.map(([label, key, unit]) => {

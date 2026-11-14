@@ -5,11 +5,11 @@
  */
 
 const SCALES = {
-  size: { max: 22, color: '#38bdf8', label: 'Size' },
-  speed: { max: 5.5, color: '#f43f5e', label: 'Speed' },
-  vision: { max: 320, color: '#a78bfa', label: 'Vision' },
-  diet: { max: 2, offset: 1, color: '#10b981', label: 'Diet' },
-  generation: { max: 30, color: '#facc15', label: 'Gen' }
+  size: { max: 22, color: '#3fe0d0', label: 'Size' },
+  speed: { max: 5.5, color: '#fb7185', label: 'Speed' },
+  vision: { max: 320, color: '#8fa9b3', label: 'Vision' },
+  diet: { max: 2, offset: 1, color: '#34d399', label: 'Diet' },
+  generation: { max: 30, color: '#fbbf24', label: 'Gen' }
 };
 
 export class EvolutionChart {
@@ -36,6 +36,14 @@ export class EvolutionChart {
 
     if (this.history.length > this.maxHistory) this.history.shift();
     this.render();
+  }
+
+  reset() {
+    this.history = [];
+    this.lastRecordTime = 0;
+    if (this.ctx && this.canvas) {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
   }
 
   render() {
@@ -74,7 +82,7 @@ export class EvolutionChart {
 
   legendHTML() {
     return Object.values(SCALES)
-      .map((c) => `<span class="legend-dot" style="color:${c.color}">● ${c.label}</span>`)
+      .map((c) => `<span class="legend-dot" style="color:${c.color}">${c.label}</span>`)
       .join(' ');
   }
 }

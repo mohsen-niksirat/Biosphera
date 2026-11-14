@@ -72,7 +72,7 @@ export class GodBrush {
             const offsetY = (Math.random() - 0.5) * 24;
             this.world.foods.push(new Food(wx + offsetX, wy + offsetY, 'plant'));
           }
-          this.world.addParticleBurst(wx, wy, '#10b981', 5);
+          this.world.addParticleBurst(wx, wy, '#34d399', 5);
           this.soundEngine?.playEat();
         }
         break;
@@ -81,7 +81,7 @@ export class GodBrush {
       case 'meat': {
         if (this.world.foods.length < this.world.maxFoodCap) {
           this.world.foods.push(new Food(wx, wy, 'meat', 45));
-          this.world.addParticleBurst(wx, wy, '#f43f5e', 7);
+          this.world.addParticleBurst(wx, wy, '#fb7185', 7);
           this.soundEngine?.playEat();
         }
         break;
@@ -91,13 +91,13 @@ export class GodBrush {
         // Bounded like the world's own vents: unbounded placement would let
         // the brush carpet the arena and degrade the simulation.
         if (this.world.hazards.length >= 12) {
-          this.showToast?.('⚠️ Thermal vent limit reached (12).');
+          this.showToast?.('Thermal vent limit reached (12).');
           break;
         }
         this.world.hazards.push(new Hazard(wx, wy, 55, 45));
-        this.world.addParticleBurst(wx, wy, '#ef4444', 12);
+        this.world.addParticleBurst(wx, wy, '#fb7185', 12);
         this.soundEngine?.playDisaster();
-        this.showToast?.('🧪 Hazardous vent placed.');
+        this.showToast?.('Hazardous vent placed.');
         this.setMode('select'); // One-off placement
         break;
       }
@@ -165,7 +165,7 @@ export class GodBrush {
     for (const r of this.ripples) {
       ctx.beginPath();
       ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0, r.alpha)})`;
+      ctx.strokeStyle = `rgba(63, 224, 208, ${Math.max(0, r.alpha)})`;
       ctx.lineWidth = 2.5;
       ctx.stroke();
     }

@@ -12,6 +12,8 @@ import { PheromoneField } from '../src/engine/PheromoneField.js';
 import { SpeciesRegistry } from '../src/engine/SpeciesRegistry.js';
 import { HallOfFame } from '../src/engine/HallOfFame.js';
 import { EvolutionChart } from '../src/ui/EvolutionChart.js';
+import { Camera } from '../src/render/Camera.js';
+import { PopulationChart } from '../src/ui/PopulationChart.js';
 
 const results = [];
 const check = (name, pass, detail) => {
@@ -278,6 +280,89 @@ check('60s stability: population bounded, no NaN coordinates',
   check('Toroidal seam: organism at x=30 senses food at x=2380 (50px across the seam)',
     queried.includes(food) && inputs[0] > 0.5 && Math.abs(inputs[1]) < 0.1,
     `queried=${queried.length} foodInput=${inputs[0].toFixed(2)} angleInput=${inputs[1].toFixed(2)}`);
+}
+
+// --- Test 16: HiDPI camera mapping ---
+{
+  const cam = new Camera(0, 0, 1);
+  cam.pixelRatio = 2;
+  const before = cam.screenToWorld(200, 100);
+  cam.zoomAt(-1, 200, 100);
+  const after = cam.screenToWorld(200, 100);
+  check('HiDPI camera: device px scale by zoom*DPR and zoom anchors the cursor',
+    Math.abs(before.x - 100) < 1e-6 && Math.abs(before.y - 50) < 1e-6 &&
+    Math.abs(after.x - before.x) < 1e-6 && Math.abs(after.y - before.y) < 1e-6,
+    `before=(${before.x.toFixed(1)},${before.y.toFixed(1)}) after=(${after.x.toFixed(1)},${after.y.toFixed(1)})`);
+}
+
+// --- Test 17: world rules survive a save/load roundtrip ---
+{
+  const w1 = new World(1200, 900);
+  w1.mutationScale = 1.7;
+  w1.currentStrength = 0.8;
+  w1.maxPopulationCap = 240;
+  const snap = JSON.parse(JSON.stringify(w1.serializeState()));
+  const w2 = new World(1200, 900);
+  const ok = w2.loadState(snap);
+  check('Save/Load preserves world rules (mutation, currents, capacity)',
+    ok && w2.mutationScale === 1.7 && Math.abs(w2.currentStrength - 0.8) < 1e-9 && w2.maxPopulationCap === 240);
+}
+
+// --- Test 18: malformed ecosystem files are rejected, not partially applied ---
+{
+  const w = new World(1200, 900);
+  const badSize = w.loadState({ version: 1, width: 0, height: 0, organisms: [] });
+  const badOrgans = w.loadState({ version: 1, width: 100, height: 100, organisms: 'nope' });
+  const badFood = w.loadState({ version: 1, width: 100, height: 100, organisms: [], foods: [null, 3] });
+  check('Malformed saves are rejected without mutating the world',
+    badSize === false && badOrgans === false && badFood === true && w.width === 100 && w.foods.length === 0);
+}
+
+// --- Test 19: mutation scale 0 reproduces the genome exactly ---
+{
+  const parent = new Organism(100, 100, new DNA({ size: 12, speed: 3, diet: -0.4, sensorRange: 180, colorHue: 77 }), 3);
+  parent.energy = parent.dna.reproduceThreshold;
+  const child = parent.reproduce({ width: 2400, height: 1800, mutationScale: 0 });
+  const sameWeights = child.dna.brain.weights.every((layer, l) =>
+    layer.every((row, j) => row.every((w, k) => w === parent.dna.brain.weights[l][j][k])));
+  check('Mutation scale 0 reproduces the genome and brain exactly',
+    child.dna.size === parent.dna.size && child.dna.diet === parent.dna.diet &&
+    child.dna.colorHue === parent.dna.colorHue && sameWeights);
+}
+
+// --- Test 20: a full biosphere blocks births before the parent pays ---
+{
+  const org = new Organism(100, 100, new DNA({ size: 12, speed: 3, diet: -0.5, sensorRange: 160 }), 1);
+  org.dna.brain.feedForward = () => new Float32Array([0, 0, 0, 1]);
+  org.energy = org.dna.reproduceThreshold + 10;
+  org.age = 10;
+  org.reproduceCooldown = 0;
+
+  const base = { width: 2400, height: 1800, metabolismMult: 1, population: 1 };
+  const blocked = org.update(1 / 60, 2400, 1800, [], [], [], { ...base, allowBirth: false });
+  const blockedCost = org.reproduceCooldown === 0 && org.childrenCount === 0;
+  const allowed = org.update(1 / 60, 2400, 1800, [], [], [], { ...base, allowBirth: true });
+
+  check('Full biosphere blocks birth before the parent pays; open capacity allows it',
+    blocked === null && blockedCost && !!allowed && org.childrenCount === 1 && org.reproduceCooldown > 0);
+}
+
+// --- Test 21: CSV export uses raw plant counts and a relative time axis ---
+{
+  globalThis.document = { getElementById: () => null };
+  const chart = new PopulationChart(null, 10);
+  delete globalThis.document;
+  chart.canvas = {};
+  chart.history = [
+    { t: 5000, herbivores: 4, carnivores: 1, omnivores: 2, plants: 37, food: 9 },
+    { t: 6500, herbivores: 6, carnivores: 2, omnivores: 1, plants: 41, food: 12 }
+  ];
+  const csv = chart.csv();
+  const lines = csv.split('\n');
+  check('CSV export: header, relative seconds, raw plant counts',
+    lines[0] === 'time_s,herbivores,carnivores,omnivores,plants' &&
+    lines[1] === '0.0,4,1,2,37' && lines[2] === '1.5,6,2,1,41',
+    lines.slice(0, 3).join(' | '));
 }
 
 const failed = results.filter(r => !r.pass);

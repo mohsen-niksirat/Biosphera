@@ -38,6 +38,7 @@ export class World {
     this.pheromones = new PheromoneField(width, height);
     this.currentStrength = 0.35;   // water current push strength (0 disables)
     this.sexualReproduction = false;
+    this.mutationScale = 1;       // multiplier on offspring mutation rate/power
     this.foodRateMultiplier = 1;   // set by the season cycle
     this.metabolismMultiplier = 1; // set by the season cycle
 
@@ -50,7 +51,9 @@ export class World {
     this._env = {
       sexual: false,
       metabolismMult: 1,
+      mutationScale: 1,
       population: 0,
+      allowBirth: true,
       pheromones: this.pheromones,
       onEat: (org, type) => this._handleEat(org, type)
     };
@@ -162,7 +165,7 @@ export class World {
     return org;
   }
 
-  addParticleBurst(x, y, color = '#38bdf8', count = 12) {
+  addParticleBurst(x, y, color = '#3fe0d0', count = 12) {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 20 + Math.random() * 60;
@@ -256,12 +259,16 @@ export class World {
     const newborns = [];
     this._env.sexual = this.sexualReproduction;
     this._env.metabolismMult = this.metabolismMultiplier;
+    this._env.mutationScale = this.mutationScale;
     this._env.population = this.organisms.length;
     this._env.width = this.width;
     this._env.height = this.height;
 
     for (let i = this.organisms.length - 1; i >= 0; i--) {
       const org = this.organisms[i];
+      // Births are gated before the parent pays the reproductive cost, so a
+      // full biosphere cannot leave parents with phantom offspring.
+      this._env.allowBirth = (this.organisms.length + newborns.length) < this.maxPopulationCap;
       const nearbyFoods = this.spatialFoods.query(org.x, org.y, org.dna.sensorRange);
       const nearbyOrganisms = this.spatialOrganisms.query(org.x, org.y, org.dna.sensorRange);
 
@@ -291,7 +298,7 @@ export class World {
         this.deadLifespans.push(org.age);
         if (this.deadLifespans.length > 100) this.deadLifespans.shift();
 
-        this.addParticleBurst(org.x, org.y, '#f43f5e', 8);
+        this.addParticleBurst(org.x, org.y, '#fb7185', 8);
         this.pheromones.deposit(org.x, org.y, 'danger', 1.0);
 
         // Controlled meat drop: prevent food explosions
@@ -401,6 +408,7 @@ export class World {
       maxGeneration: this.maxGeneration,
       currentStrength: this.currentStrength,
       sexualReproduction: this.sexualReproduction,
+      mutationScale: this.mutationScale,
       organisms: this.organisms.map((o) => ({
         x: +o.x.toFixed(1),
         y: +o.y.toFixed(1),
@@ -427,6 +435,8 @@ export class World {
 
   loadState(data) {
     if (!data || data.version !== 1 || !Array.isArray(data.organisms)) return false;
+    if (!Number.isFinite(data.width) || !Number.isFinite(data.height) ||
+        data.width <= 0 || data.height <= 0) return false;
 
     this.currentPreset = data.preset || 'sanctuary';
     this.width = data.width;
@@ -438,23 +448,26 @@ export class World {
     this.pheromones = new PheromoneField(this.width, this.height);
     this._env.pheromones = this.pheromones;
 
-    this.foodSpawnRate = data.foodSpawnRate;
-    this.maxFoodCap = data.maxFoodCap;
-    this.maxPopulationCap = data.maxPopulationCap;
-    this.iceAgeTimer = data.iceAgeTimer;
-    this.radiationTimer = data.radiationTimer;
-    this.totalBorn = data.totalBorn;
-    this.totalDeaths = data.totalDeaths;
-    this.maxGeneration = data.maxGeneration;
+    this.foodSpawnRate = Number.isFinite(data.foodSpawnRate) ? data.foodSpawnRate : 16;
+    this.maxFoodCap = Number.isFinite(data.maxFoodCap) ? Math.max(1, data.maxFoodCap) : 300;
+    this.maxPopulationCap = Number.isFinite(data.maxPopulationCap) ? Math.max(1, data.maxPopulationCap) : 160;
+    this.iceAgeTimer = Number.isFinite(data.iceAgeTimer) ? data.iceAgeTimer : 0;
+    this.radiationTimer = Number.isFinite(data.radiationTimer) ? data.radiationTimer : 0;
+    this.totalBorn = Number.isFinite(data.totalBorn) ? data.totalBorn : 0;
+    this.totalDeaths = Number.isFinite(data.totalDeaths) ? data.totalDeaths : 0;
+    this.maxGeneration = Number.isFinite(data.maxGeneration) ? Math.max(1, data.maxGeneration) : 1;
     this.deadLifespans = [];
-    this.currentStrength = data.currentStrength ?? this.currentStrength;
+    this.currentStrength = Number.isFinite(data.currentStrength) ? data.currentStrength : this.currentStrength;
     this.sexualReproduction = !!data.sexualReproduction;
+    this.mutationScale = Number.isFinite(data.mutationScale) ? data.mutationScale : 1;
 
     this.organisms = [];
     for (const s of data.organisms) {
+      if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
       const dna = DNA.deserialize(s.dna);
       if (!dna) continue;
-      const org = new Organism(s.x, s.y, dna, s.gen || 1, s.parent || null, s.energy);
+      const energy = Number.isFinite(s.energy) ? s.energy : undefined;
+      const org = new Organism(s.x, s.y, dna, s.gen || 1, s.parent || null, energy);
       if (s.id) org.id = s.id;
       org.age = s.age || 0;
       org.plantsEaten = s.pe || 0;
@@ -465,13 +478,17 @@ export class World {
       this.organisms.push(org);
     }
 
-    this.foods = (data.foods || []).map(([x, y, isMeat, energy, age]) => {
-      const f = new Food(x, y, isMeat ? 'meat' : 'plant', energy);
-      f.age = age;
-      return f;
-    });
+    this.foods = (data.foods || [])
+      .filter((entry) => Array.isArray(entry) && Number.isFinite(entry[0]) && Number.isFinite(entry[1]))
+      .map(([x, y, isMeat, energy, age]) => {
+        const f = new Food(x, y, isMeat ? 'meat' : 'plant', Number.isFinite(energy) ? energy : 25);
+        f.age = Number.isFinite(age) ? age : 0;
+        return f;
+      });
 
-    this.hazards = (data.hazards || []).map(([x, y, radius, dps]) => new Hazard(x, y, radius, dps));
+    this.hazards = (data.hazards || [])
+      .filter((entry) => Array.isArray(entry) && Number.isFinite(entry[0]) && Number.isFinite(entry[1]))
+      .map(([x, y, radius, dps]) => new Hazard(x, y, Number.isFinite(radius) ? radius : 50, Number.isFinite(dps) ? dps : 35));
     this.particles = [];
     return true;
   }
