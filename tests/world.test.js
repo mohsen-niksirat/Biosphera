@@ -136,4 +136,15 @@ describe('World', () => {
     const plants = world.foods.filter((f) => f.type === 'plant' && Math.hypot(f.x - 500, f.y - 500) < 1);
     assert.ok(plants.length >= 1, 'decayed meat should spawn a plant fertilizer pulse');
   });
+
+  it('triggers a pathogen wave infecting a cluster of organisms', () => {
+    const world = new World(1200, 900);
+    world.organisms = [];
+    for (let i = 0; i < 6; i++) {
+      world.spawnOrganismAt(500 + i * 10, 500, new DNA({ immunity: 0 }));
+    }
+    const infected = world.triggerPathogenWave();
+    assert.ok(infected >= 1);
+    assert.ok(world.organisms.some((o) => o.infectedTimer > 0));
+  });
 });

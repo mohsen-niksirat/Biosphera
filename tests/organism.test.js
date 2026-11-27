@@ -100,4 +100,32 @@ describe('Organism', () => {
     assert.ok(mateA.reproduceCooldown >= 9);
     assert.ok(mateB.reproduceCooldown >= 9);
   });
+
+  it('senses kin similarity, inhibits conspecific biting, and drains energy when infected', () => {
+    const predator = new Organism(100, 100, new DNA({ diet: 0.9, colorHue: 10, size: 15, reproduceThreshold: 140 }), 1, null, 100);
+    predator.heading = 0;
+    const kinPrey = new Organism(120, 100, new DNA({ diet: 0.9, colorHue: 12, size: 10 }), 1, null, 100);
+
+    const inputs = predator.sense([], [kinPrey], [], { width: 2400, height: 1800 });
+    assert.ok(inputs[13] > 0.8, `expected high kin similarity, got ${inputs[13]}`);
+
+    // Well-fed predator does not bite close kin
+    predator.performFeeding([], [kinPrey], { width: 2400, height: 1800 });
+    assert.equal(kinPrey.energy, 100);
+
+    // Critically starving predator (< 25% reproduceThreshold) overrides inhibition
+    predator.energy = 10;
+    predator.performFeeding([], [kinPrey], { width: 2400, height: 1800 });
+    assert.ok(kinPrey.energy < 100);
+
+    // Pathogen infection drains energy and immunity mitigates drain
+    const lowImmunity = new Organism(300, 300, new DNA({ size: 10, immunity: 0.0 }), 1, null, 100);
+    const highImmunity = new Organism(400, 400, new DNA({ size: 10, immunity: 1.0 }), 1, null, 100);
+    lowImmunity.infectedTimer = 5;
+    highImmunity.infectedTimer = 5;
+    lowImmunity.update(0.2, 2400, 1800, [], [], [], { width: 2400, height: 1800 });
+    highImmunity.update(0.2, 2400, 1800, [], [], [], { width: 2400, height: 1800 });
+    assert.ok(lowImmunity.infectedTimer < 5);
+    assert.ok(lowImmunity.energy < 100 && highImmunity.energy < 100);
+  });
 });

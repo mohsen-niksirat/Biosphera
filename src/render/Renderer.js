@@ -637,6 +637,25 @@ export class Renderer {
       }
     }
 
+    // B3. PATHOGEN CONTAGION RING
+    if ((org.infectedTimer ?? 0) > 0) {
+      const pulse = 0.5 + 0.5 * Math.sin((org.age ?? 0) * 8);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, org.radius + 7.5 + pulse * 2.2, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(192, 132, 252, ${0.42 + pulse * 0.35})`;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, org.radius + 4.5, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(245, 158, 11, ${0.5 + pulse * 0.3})`;
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // C. NEURAL-DRIVEN MULTI-SEGMENT UNDULATING SPINE / FLAGELLA
     const spineSegments = 6;
     const segLength = (org.radius * 2.0) / spineSegments;

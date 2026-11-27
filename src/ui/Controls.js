@@ -111,6 +111,12 @@ export class Controls {
       this.onFieldEvent?.('Thermal toxic vent erupted.', 'disaster');
     });
 
+    document.getElementById('btn-pathogen')?.addEventListener('click', () => {
+      this.world.triggerPathogenWave?.();
+      this.showToast('Pathogen wave released.');
+      this.onFieldEvent?.('Pathogen wave released — contagion spreading.', 'disaster');
+    });
+
     // Water currents toggle
     const btnCurrents = document.getElementById('btn-currents');
     btnCurrents?.addEventListener('click', () => {

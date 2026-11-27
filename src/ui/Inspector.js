@@ -4,7 +4,7 @@
 
 const INPUT_LABELS = [
   'Food D', 'Food ∠', 'Org D', 'Org ∠', 'Role',
-  'Hazard', 'Energy', 'Bias', 'Scent', 'Age', 'Ready', 'Mem 1', 'Mem 2'
+  'Hazard', 'Energy', 'Bias', 'Scent', 'Age', 'Ready', 'Mem 1', 'Mem 2', 'Kin'
 ];
 const OUTPUT_LABELS = ['Steer', 'Thrust', 'Bite', 'Split'];
 

@@ -31,8 +31,9 @@ export class Organism {
     this.childrenCount = 0;
     this.reproduceCooldown = 6.0; // Must mature before reproducing
     this.biteCooldown = 0; // Predation is rate-limited so prey can escape
+    this.infectedTimer = 0;
 
-    this.latestInputs = new Float32Array(13);
+    this.latestInputs = new Float32Array(14);
     this.latestOutputs = new Float32Array(4);
     this.memoryState = new Float32Array(2);
     this.nearestTarget = null;
@@ -104,13 +105,32 @@ export class Organism {
     this.y = wrapCoord(this.y, worldHeight);
 
     // 4. METABOLISM & ENERGY BURN (speed normalized back to 60fps-frame units so burn rates stay calibrated)
-    const basalCost = 0.35 + (this.dna.size / 15) * 0.25 + armor * 0.25 + (jawPower - 0.5) * 0.12 + finCount * 0.03;
+    const immunity = this.dna.immunity ?? 0.25;
+    const basalCost = 0.35 + (this.dna.size / 15) * 0.25 + armor * 0.25 + (jawPower - 0.5) * 0.12 + finCount * 0.03 + immunity * 0.12;
     const frameSpeed = currentSpeed / 60;
     const kineticCost = (frameSpeed * frameSpeed * 0.04) * (this.dna.size / 10) * (1 + fatReserve * 0.2);
     const sensorCost = (this.dna.sensorRange / 200) * 0.15;
     const totalBurn = (basalCost + kineticCost + sensorCost) * dt * (env.metabolismMult ?? 1);
 
     this.energy -= totalBurn;
+
+    // Pathogen contagion: gentle energy drain + proximity transmission scaled by (1 - immunity)
+    if (this.infectedTimer > 0) {
+      this.infectedTimer = Math.max(0, this.infectedTimer - dt);
+      this.energy -= 1.8 * (1 - immunity * 0.5) * dt;
+      for (let i = 0; i < nearbyOrganisms.length; i++) {
+        const other = nearbyOrganisms[i];
+        if (other.id === this.id || other.isDead || (other.infectedTimer ?? 0) > 0) continue;
+        const dx = wrapDelta(other.x - this.x, env.width);
+        const dy = wrapDelta(other.y - this.y, env.height);
+        if (Math.hypot(dx, dy) <= this.radius + other.radius + 18) {
+          const spreadChance = Math.min(1, 0.8 * dt * (1 - (other.dna.immunity ?? 0.25)));
+          if (Math.random() < spreadChance) {
+            other.infectedTimer = 8.0 + Math.random() * 4.0;
+          }
+        }
+      }
+    }
 
     // Hazards
     for (const hazard of nearbyHazards) {
@@ -227,8 +247,17 @@ export class Organism {
     );
   }
 
+  kinSimilarity(other) {
+    let dh = Math.abs(this.dna.colorHue - other.dna.colorHue) % 360;
+    if (dh > 180) dh = 360 - dh;
+    const dHue = dh / 180;
+    const dDiet = Math.abs(this.dna.diet - other.dna.diet) / 2;
+    const dist = 0.65 * dHue + 0.35 * dDiet;
+    return 1 - 2 * dist;
+  }
+
   sense(foods, organisms, hazards, env = {}) {
-    const inputs = [0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0];
+    const inputs = [0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0, 0];
     this.nearestTarget = null;
 
     let closestFoodDist = Infinity;
@@ -273,6 +302,7 @@ export class Organism {
     let closestOrgDist = Infinity;
     let closestOrgAngle = 0;
     let perceivedRole = 0;
+    let closestOrg = null;
 
     for (const other of organisms) {
       if (other.id === this.id || other.isDead) continue;
@@ -289,6 +319,7 @@ export class Organism {
         if (Math.abs(relAngle) <= this.dna.sensorFov * 0.5) {
           closestOrgDist = dist;
           closestOrgAngle = relAngle;
+          closestOrg = other;
 
           if (this.dna.diet > 0.1 && other.dna.size < this.dna.size * 1.15) {
             perceivedRole = 1.0;
@@ -305,6 +336,7 @@ export class Organism {
       inputs[2] = 1 - (closestOrgDist / this.dna.sensorRange);
       inputs[3] = closestOrgAngle / Math.PI;
       inputs[4] = perceivedRole;
+      inputs[13] = this.kinSimilarity(closestOrg);
     }
 
     // Sense hazard
@@ -372,8 +404,11 @@ export class Organism {
     // contact bites every substep (~30x/s), killing prey instantly and
     // crashing the ecosystem into cyclic herbivore extinction.
     if (this.dna.diet > -0.2 && this.biteCooldown <= 0) {
+      const starving = this.energy < this.dna.reproduceThreshold * 0.25;
       for (const other of nearbyOrganisms) {
         if (other.id === this.id || other.isDead) continue;
+        // Conspecific bite-inhibition: avoid friendly-fire predation on close kin unless critically starving
+        if (!starving && this.kinSimilarity(other) > 0.65) continue;
         const dx = wrapDelta(other.x - this.x, env.width);
         const dy = wrapDelta(other.y - this.y, env.height);
         const dist = Math.hypot(dx, dy);

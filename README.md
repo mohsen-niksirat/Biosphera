@@ -13,7 +13,7 @@
 
 Unlike traditional rule-based cellular automata or particle visualizers, each organism in **Biosphera** possesses:
 1. **Digital Genome (DNA):** Encodes physical traits (mass, top speed, sensory range, field-of-view, dietary orientation) and metabolic rates.
-2. **Micro Neural Network Brain:** A fast feedforward perceptron ($9 \text{ inputs} \rightarrow 7 \text{ hidden} \rightarrow 4 \text{ outputs}$) that processes live sensory stimuli (distance and angle to plants, prey, predators, and toxic hazards, plus ambient chemical scent) to steer and accelerate.
+2. **Micro Neural Network Brain:** A fast recurrent-memory neural network ($14 \text{ inputs} \rightarrow 10 \text{ hidden} \rightarrow 4 \text{ outputs}$) that processes live sensory stimuli (distance and angle to plants, prey, predators, hazards, chemical scent, internal age/reproduction readiness, 2 recurrent memory neurons, and kin similarity) to steer and accelerate.
 3. **Emergent Natural Selection:** No behaviors are hardcoded. In early generations, organisms wander randomly; within 10–20 generations, smart grazing, predator evasion, ambush hunting, and schooling behaviors emerge spontaneously.
 
 ---
@@ -42,9 +42,13 @@ Unlike traditional rule-based cellular automata or particle visualizers, each or
 - **🏆 Evolutionary Achievements (12 Trophies):** Unlocks persistent trophies as your biosphere hits survival milestones (Century Club, Apex Predator, Master Grazer, Ice Age Survivor, Cosmic Mutant).
 - **📱 Progressive Web App (PWA):** Installs as a standalone offline desktop/mobile app via `manifest.json` and service worker caching with zero server dependency.
 - **🔬 Microscope Inspector:** Click on any swimming organism to inspect its internal state in real-time:
-  - **Live Neural Visualizer:** Animated graph of inputs, hidden neurons, and outputs glowing as synapses fire.
+  - **Live Neural Visualizer:** HiDPI graph of 14 labeled inputs, hidden neurons, and 4 actuators glowing as synapses fire.
   - **Genetics & Lineage:** Generation number, age, reproductive count, diet classification (Herbivore 🌿, Carnivore 🥩, Omnivore 🌾).
-  - **Target Tracking Camera:** Smoothly follows your chosen specimen across the biome.
+  - **Clone to Lab & Specimen Card:** Send any wild specimen's DNA straight into Gene Lab or export a high-res PNG Specimen Trading Card.
+  - **Target Tracking & Auto-Director Camera:** Follow a specimen manually or engage Auto-Director (`Apex`, `Mutant`, `Action`) to track emergent highlights automatically.
+- **🎯 Scientific Challenges & Live Field Log:** Track 4 live evolutionary benchmarks (*Apex Predator*, *Adaptive Radiation*, *Winter Survivor*, *Deep Lineage*) and follow species births, generation milestones, rescues, and disasters in the collapsible HUD Field Log.
+- **🧬 Morphospace Niche Scatter & Deep-Time Warp:** Switch Evolution Trends to a live *Size vs Speed* Niche Scatter plot with hover telemetry and click-to-inspect, or accelerate evolution up to `20x` / `50x` warp.
+- **🦠 Pathogen Wave & Kin Recognition:** Release contagious pathogen waves that select for evolvable immunity, while kin recognition enables conspecific schooling and pack-hunting.
 - **📈 Lotka-Volterra Ecology Chart:** Real-time scrolling population dynamics graph displaying predator-prey oscillations and vegetation abundance.
 - **🔊 Procedural WebAudio Soundscape:** Synthesizes an ambient deep-ocean drone and organic SFX (mitosis chimes, feeding bubble pops, predatory bites, disaster rumbles) without loading external audio assets.
 - **🌍 Biome Starting Scenarios:**
@@ -90,6 +94,7 @@ Biosphera/
 │   │   ├── Achievements.js     # Unlockable evolutionary trophies
 │   │   ├── DayNightCycle.js    # Circadian lighting & bioluminescence
 │   │   ├── ArenaTrial.js       # 3-phase fitness benchmark coliseum
+│   │   ├── Challenges.js       # Live scientific challenges evaluator
 │   │   └── Cladogram.js        # Phylogenetic lineage visualization
 │   ├── entities/
 │   │   ├── Organism.js     # Living agent: sense, think, act, reproduce, die

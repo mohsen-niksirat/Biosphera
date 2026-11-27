@@ -466,6 +466,33 @@ export class World {
     this.onEvent?.('disaster');
   }
 
+  triggerPathogenWave() {
+    if (this.organisms.length === 0) return 0;
+    const patientZero = this.organisms[Math.floor(Math.random() * this.organisms.length)];
+    patientZero.infectedTimer = 10 + Math.random() * 4;
+    let infectedCount = 1;
+
+    for (const org of this.organisms) {
+      if (org.id === patientZero.id || org.isDead) continue;
+      let dx = org.x - patientZero.x;
+      let dy = org.y - patientZero.y;
+      if (dx > this.width * 0.5) dx -= this.width;
+      else if (dx < -this.width * 0.5) dx += this.width;
+      if (dy > this.height * 0.5) dy -= this.height;
+      else if (dy < -this.height * 0.5) dy += this.height;
+      if (Math.hypot(dx, dy) <= 180) {
+        const immunity = org.dna.immunity ?? 0.25;
+        if (Math.random() < 1 - immunity * 0.7) {
+          org.infectedTimer = 9 + Math.random() * 4;
+          infectedCount++;
+        }
+      }
+    }
+
+    this.onEvent?.('disaster');
+    return infectedCount;
+  }
+
   clearAll() {
     // Full reset: re-seed the current scenario from scratch (organisms, food, hazards, timers)
     this.loadPreset(this.currentPreset);

@@ -7,8 +7,8 @@
  * cache every successful same-origin GET (hashed assets included).
  */
 
-const CACHE_NAME = 'biosphera-v9';
-const SHELL = ['./', './index.html', './favicon.svg'];
+const CACHE_NAME = 'biosphera-v10';
+const SHELL = ['./', './index.html', './favicon.svg', './manifest.json'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

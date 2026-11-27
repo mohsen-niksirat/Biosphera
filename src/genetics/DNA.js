@@ -20,6 +20,7 @@ export class DNA {
     this.armor = params.armor ?? (Math.random() * 0.35);
     this.finCount = params.finCount ?? (1 + Math.floor(Math.random() * 3));
     this.fatReserve = params.fatReserve ?? (0.2 + Math.random() * 0.4);
+    this.immunity = params.immunity ?? (0.1 + Math.random() * 0.4);
     this.brain = params.brain ?? new NeuralNet(DEFAULT_BRAIN_TOPOLOGY);
   }
 
@@ -58,6 +59,7 @@ export class DNA {
       armor: mutateNum(this.armor, 0.0, 1.0),
       finCount: newFinCount,
       fatReserve: mutateNum(this.fatReserve, 0.0, 1.0),
+      immunity: mutateNum(this.immunity, 0.0, 1.0),
       brain: newBrain
     });
   }
@@ -99,6 +101,7 @@ export class DNA {
       armor: pick(a.armor, b.armor),
       finCount: pick(a.finCount, b.finCount),
       fatReserve: pick(a.fatReserve, b.fatReserve),
+      immunity: pick(a.immunity, b.immunity),
       brain
     });
   }
@@ -117,6 +120,7 @@ export class DNA {
       ar: Number(this.armor.toFixed(2)),
       fc: Math.round(this.finCount),
       fr: Number(this.fatReserve.toFixed(2)),
+      im: Number(this.immunity.toFixed(2)),
       b: this.brain.serialize()
     };
     return btoa(JSON.stringify(payload));
@@ -145,7 +149,8 @@ export class DNA {
         jawPower: optNum(parsed.jp, 1.0),
         armor: optNum(parsed.ar, 0.15),
         finCount: optNum(parsed.fc, 2),
-        fatReserve: optNum(parsed.fr, 0.2)
+        fatReserve: optNum(parsed.fr, 0.2),
+        immunity: optNum(parsed.im, 0.25)
       };
       if (Object.values(raw).some((v) => v === null)) return null;
       if (raw.size <= 0 || raw.speed <= 0 || raw.sensorRange <= 0 ||
@@ -165,7 +170,8 @@ export class DNA {
         jawPower: clamp(raw.jawPower, 0.5, 2.0),
         armor: clamp(raw.armor, 0.0, 1.0),
         finCount: Math.round(clamp(raw.finCount, 0, 6)),
-        fatReserve: clamp(raw.fatReserve, 0.0, 1.0)
+        fatReserve: clamp(raw.fatReserve, 0.0, 1.0),
+        immunity: clamp(raw.immunity, 0.0, 1.0)
       };
 
       const brain = NeuralNet.deserialize(parsed.b);

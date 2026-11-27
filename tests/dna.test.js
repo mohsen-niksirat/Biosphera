@@ -4,7 +4,7 @@ import { DNA } from '../src/genetics/DNA.js';
 import { NeuralNet } from '../src/brain/NeuralNet.js';
 
 describe('DNA', () => {
-  it('creates valid default traits and a 13-input brain', () => {
+  it('creates valid default traits and a 14-input brain', () => {
     const dna = new DNA();
     assert.ok(dna.size >= 8 && dna.size <= 16);
     assert.ok(dna.speed >= 2 && dna.speed <= 4);
@@ -13,7 +13,8 @@ describe('DNA', () => {
     assert.ok(dna.armor >= 0 && dna.armor <= 0.35);
     assert.ok(dna.finCount >= 1 && dna.finCount <= 3);
     assert.ok(dna.fatReserve >= 0.2 && dna.fatReserve <= 0.6);
-    assert.equal(dna.brain.topology.inputs, 13);
+    assert.ok(dna.immunity >= 0.1 && dna.immunity <= 0.5);
+    assert.equal(dna.brain.topology.inputs, 14);
     assert.equal(dna.brain.topology.outputs, 4);
   });
 
@@ -33,6 +34,7 @@ describe('DNA', () => {
       assert.ok(dna.armor >= 0.0 && dna.armor <= 1.0);
       assert.ok(dna.finCount >= 0 && dna.finCount <= 6);
       assert.ok(dna.fatReserve >= 0.0 && dna.fatReserve <= 1.0);
+      assert.ok(dna.immunity >= 0.0 && dna.immunity <= 1.0);
     }
   });
 
@@ -42,7 +44,7 @@ describe('DNA', () => {
     const child = DNA.crossover(a, b);
     assert.ok(child.size === 10 || child.size === 18);
     assert.ok(child.diet === -0.8 || child.diet === 0.8);
-    assert.equal(child.brain.topology.inputs, 13);
+    assert.equal(child.brain.topology.inputs, 14);
 
     // Legacy 8-input parent vs 13-input parent falls back to parent A's brain
     const legacy = new DNA({
@@ -104,5 +106,6 @@ describe('DNA', () => {
     assert.equal(restored.armor, 0.15);
     assert.equal(restored.finCount, 2);
     assert.equal(restored.fatReserve, 0.2);
+    assert.equal(restored.immunity, 0.25);
   });
 });

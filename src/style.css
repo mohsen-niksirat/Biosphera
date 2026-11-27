@@ -983,6 +983,53 @@ svg {
   display: none;
 }
 
+.trends-mode-btn {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-raised);
+  color: var(--ink-muted);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-snap), color var(--dur-fast) var(--ease-snap), border-color var(--dur-fast) var(--ease-snap);
+}
+
+.trends-mode-btn:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.trends-mode-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.trends-canvas-wrap {
+  position: relative;
+}
+
+.scatter-tooltip {
+  position: absolute;
+  top: 6px;
+  left: 34px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(5, 13, 20, 0.88);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ink);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.scatter-tooltip[hidden] {
+  display: none;
+}
+
 @media (min-width: 841px) {
   .viewport-container:has(#inspector-panel[style*="display: block"]) .trends-drawer {
     right: 344px;
@@ -1849,6 +1896,14 @@ kbd {
 
 /* Tighten the header before labels start to overflow the instrument strip */
 @media (max-width: 1580px) {
+  .logo-sub {
+    display: none;
+  }
+
+  .stat-opt {
+    display: none;
+  }
+
   .btn-icon-action .btn-label {
     display: none;
   }
@@ -1862,7 +1917,13 @@ kbd {
   }
 }
 
-@media (max-width: 1280px) {
+@media (min-width: 1281px) {
+  .stats-strip {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 1620px) {
   .field-log {
     top: 12px;
     bottom: auto;
@@ -1875,14 +1936,6 @@ kbd {
 }
 
 @media (max-width: 1300px) {
-  .logo-sub {
-    display: none;
-  }
-
-  .stat-opt {
-    display: none;
-  }
-
   .stat {
     padding: 0 9px;
   }
@@ -1896,7 +1949,7 @@ kbd {
   }
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1260px) {
   .btn-mobile-menu {
     display: inline-flex;
   }
@@ -2016,6 +2069,7 @@ kbd {
   }
 
   .inspector-panel {
+    z-index: 70;
     top: auto;
     right: 0;
     bottom: 0;

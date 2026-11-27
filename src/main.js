@@ -636,6 +636,54 @@ class BiospheraApp {
     this.controls.onSave = () => this.saveEcosystem();
     this.controls.onLoad = () => this.loadEcosystem();
 
+    // Niche Scatter click-to-inspect
+    this.evoChart.onSelectOrganism = (org) => {
+      if (!org || org.isDead) return;
+      this.renderer.selectedOrganism = org;
+      this.inspector.inspect(org);
+      this.camera.follow(org);
+    };
+
+    // Trends / Niche Scatter mode toggle
+    const btnTrendsLine = document.getElementById('btn-trends-line');
+    const btnTrendsScatter = document.getElementById('btn-trends-scatter');
+    const trendsLegend = document.getElementById('trends-legend');
+    const trendsTitle = document.getElementById('trends-title');
+    const setTrendsMode = (mode) => {
+      const isScatter = mode === 'scatter';
+      this.evoChart.setMode(mode);
+      btnTrendsLine?.classList.toggle('active', !isScatter);
+      btnTrendsScatter?.classList.toggle('active', isScatter);
+      setPressed(btnTrendsLine, !isScatter);
+      setPressed(btnTrendsScatter, isScatter);
+      if (trendsLegend) trendsLegend.style.display = isScatter ? 'none' : 'flex';
+      if (trendsTitle) trendsTitle.textContent = isScatter ? 'Morphospace Niche Scatter' : 'Genome Evolution Trends';
+      if (isScatter) this.evoChart.updateScatter(this.world.organisms);
+    };
+    btnTrendsLine?.addEventListener('click', () => setTrendsMode('trends'));
+    btnTrendsScatter?.addEventListener('click', () => setTrendsMode('scatter'));
+
+    // Auto-Director Camera cycle (Off -> Apex -> Mutant -> Action)
+    const btnDirector = document.getElementById('btn-director');
+    const directorModes = ['off', 'apex', 'mutant', 'action'];
+    const updateDirectorButton = () => {
+      const mode = this.camera.directorMode || 'off';
+      const label = mode === 'off' ? 'Director' : `Dir: ${mode[0].toUpperCase() + mode.slice(1)}`;
+      setLabel(btnDirector, label);
+      btnDirector?.classList.toggle('active', mode !== 'off');
+      setPressed(btnDirector, mode !== 'off');
+      btnDirector?.setAttribute('aria-label', `Auto-Director: ${mode}`);
+    };
+    this.updateDirectorButton = updateDirectorButton;
+    btnDirector?.addEventListener('click', () => {
+      const cur = this.camera.directorMode || 'off';
+      const next = directorModes[(directorModes.indexOf(cur) + 1) % directorModes.length];
+      this.camera.directorMode = next;
+      if (next !== 'off') this.camera.target = null;
+      updateDirectorButton();
+      this.controls.showToast(next === 'off' ? 'Auto-Director off.' : `Auto-Director: ${next} mode`);
+    });
+
     // Mobile Tools Menu Toggle
     const btnMobileMenu = document.getElementById('btn-mobile-menu');
     const topActions = document.getElementById('top-actions');
@@ -648,7 +696,7 @@ class BiospheraApp {
     // Close mobile menu when an action is selected
     topActions?.querySelectorAll('button, select').forEach((el) => {
       el.addEventListener('click', () => {
-        if (window.innerWidth <= 1120) {
+        if (window.innerWidth <= 1260) {
           topActions.classList.remove('mobile-open');
           btnMobileMenu?.setAttribute('aria-expanded', 'false');
         }
@@ -1175,6 +1223,9 @@ class BiospheraApp {
         avgGeneration: gen / n
       }, currentTime);
     }
+    if (this.evoChart.mode === 'scatter') {
+      this.evoChart.updateScatter(orgs);
+    }
 
     // Silent autosave every 90s
     if (currentTime - this.lastAutosave >= 90000) {
@@ -1192,7 +1243,12 @@ class BiospheraApp {
     // Whole-biome overview
     this.minimap.render(currentTime);
 
-    // 2. Camera tracking
+    // 2. Camera tracking / Auto-Director
+    if (this.isDragging && this.camera.directorMode && this.camera.directorMode !== 'off') {
+      this.camera.directorMode = 'off';
+      this.updateDirectorButton?.();
+    }
+    this.camera.updateDirector?.(this.world, dt);
     this.camera.update(this.canvas.width, this.canvas.height, dt);
 
     // 3. Render Viewport with GodBrush ripples, Day/Night lighting & season tint
