@@ -42,6 +42,7 @@ export class Inspector {
 
     this.onFollow = null;
     this.onClone = null;
+    this.onCloneToLab = null;
     this.onKill = null;
     this.onExport = null;
     this.onArenaTrial = null;
@@ -149,6 +150,8 @@ export class Inspector {
       <button id="btn-arena" class="btn btn-secondary btn-sm" style="grid-column: span 2;"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-zap"/></svg>Arena Benchmark</button>
       <button id="btn-follow" class="btn btn-secondary btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-target"/></svg>Follow</button>
       <button id="btn-clone" class="btn btn-secondary btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-dna"/></svg>Clone</button>
+      <button id="btn-clone-lab" class="btn btn-secondary btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-flask"/></svg>Clone to Lab</button>
+      <button id="btn-specimen-card" class="btn btn-secondary btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-camera"/></svg>Specimen Card</button>
       <button id="btn-export" class="btn btn-primary btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-upload"/></svg>Export DNA</button>
       <button id="btn-kill" class="btn btn-danger btn-sm"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-x"/></svg>Terminate</button>
     `;
@@ -165,6 +168,14 @@ export class Inspector {
       this.onClone?.(org);
     });
 
+    document.getElementById('btn-clone-lab')?.addEventListener('click', () => {
+      this.onCloneToLab?.(org);
+    });
+
+    document.getElementById('btn-specimen-card')?.addEventListener('click', () => {
+      this.exportSpecimenCard(org);
+    });
+
     document.getElementById('btn-export')?.addEventListener('click', () => {
       const dnaStr = org.dna.serialize();
       this.onExport?.(dnaStr);
@@ -174,6 +185,132 @@ export class Inspector {
       this.onKill?.(org);
       this.deselect();
     });
+  }
+
+  /** Export a crisp PNG trading card for the inspected specimen. */
+  exportSpecimenCard(org) {
+    const w = 440;
+    const h = 580;
+    const dpr = 2;
+    const card = document.createElement('canvas');
+    card.width = w * dpr;
+    card.height = h * dpr;
+    const ctx = card.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+
+    // Card background & border
+    ctx.fillStyle = '#050d14';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0c1a24';
+    ctx.fillRect(14, 14, w - 28, h - 28);
+    ctx.strokeStyle = 'rgba(63, 224, 208, 0.45)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(14, 14, w - 28, h - 28);
+
+    // Header
+    ctx.fillStyle = '#3fe0d0';
+    ctx.font = 'bold 11px ui-monospace, Consolas, monospace';
+    ctx.fillText('BIOSPHERA SPECIMEN CARD', 28, 38);
+    ctx.fillStyle = '#8fa9b3';
+    ctx.textAlign = 'right';
+    ctx.fillText(`#${org.id} · GEN ${org.generation}`, w - 28, 38);
+    ctx.textAlign = 'left';
+
+    // Portrait well
+    ctx.fillStyle = '#02060d';
+    ctx.fillRect(28, 52, w - 56, 200);
+    ctx.strokeStyle = 'rgba(220, 236, 242, 0.14)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(28, 52, w - 56, 200);
+
+    // Draw organism portrait
+    const cx = w * 0.5;
+    const cy = 152;
+    const scale = 3.2;
+    const r = Math.min(48, (org.dna.size || 12) * scale);
+    const hue = org.dna.colorHue ?? 175;
+    ctx.save();
+    ctx.translate(cx, cy);
+    // Vision cone
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, 88, -(org.dna.sensorFov || 2.4) * 0.5, (org.dna.sensorFov || 2.4) * 0.5);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(63, 224, 208, 0.1)';
+    ctx.fill();
+    // Tail
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.7, 0);
+    ctx.quadraticCurveTo(-r * 1.4, -r * 0.5, -r * 1.9, 0);
+    ctx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.75)`;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    // Body
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.15, r * 0.85, 0, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${hue}, 78%, 52%)`;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(220, 236, 242, 0.55)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Eyes
+    ctx.fillStyle = '#02060d';
+    ctx.beginPath();
+    ctx.arc(r * 0.55, -r * 0.35, 3.5, 0, Math.PI * 2);
+    ctx.arc(r * 0.55, r * 0.35, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Species & Diet
+    const dietText = org.dna.diet < -0.2 ? 'Herbivore' : (org.dna.diet > 0.2 ? 'Carnivore' : 'Omnivore');
+    const dietColor = org.dna.diet < -0.2 ? '#34d399' : (org.dna.diet > 0.2 ? '#fb7185' : '#fbbf24');
+    ctx.fillStyle = '#dcecf2';
+    ctx.font = 'italic bold 19px system-ui, -apple-system, sans-serif';
+    ctx.fillText(org.speciesName || `Lineage #${org.id}`, 28, 282);
+    ctx.fillStyle = dietColor;
+    ctx.font = 'bold 12px ui-monospace, Consolas, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(dietText.toUpperCase(), w - 28, 282);
+    ctx.textAlign = 'left';
+
+    // Stats rows
+    const rows = [
+      ['Size / Mass', `${org.dna.size.toFixed(1)} px`],
+      ['Top Speed', `${org.dna.speed.toFixed(1)}x`],
+      ['Vision Cone', `${Math.round(org.dna.sensorRange)}px @ ${Math.round((org.dna.sensorFov * 180) / Math.PI)}°`],
+      ['Age / Offspring', `${Math.round(org.age)}s / ${org.childrenCount}`],
+      ['Jaw / Armor', `${(org.dna.jawPower ?? 0.5).toFixed(2)} / ${(org.dna.armor ?? 0).toFixed(2)}`],
+      ['Fins / Fat Res.', `${org.dna.finCount ?? 2} / ${(org.dna.fatReserve ?? 0.5).toFixed(2)}`]
+    ];
+
+    let y = 312;
+    for (const [label, val] of rows) {
+      ctx.fillStyle = '#0a1620';
+      ctx.fillRect(28, y, w - 56, 32);
+      ctx.strokeStyle = 'rgba(220, 236, 242, 0.08)';
+      ctx.strokeRect(28, y, w - 56, 32);
+      ctx.fillStyle = '#8fa9b3';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.fillText(label, 40, y + 20);
+      ctx.fillStyle = '#dcecf2';
+      ctx.font = '12px ui-monospace, Consolas, monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(val, w - 40, y + 20);
+      ctx.textAlign = 'left';
+      y += 38;
+    }
+
+    // Footer
+    ctx.fillStyle = 'rgba(143, 169, 179, 0.7)';
+    ctx.font = '10px ui-monospace, Consolas, monospace';
+    ctx.fillText(`Exported ${new Date().toISOString().slice(0, 10)}`, 28, h - 28);
+
+    const link = document.createElement('a');
+    link.download = `biosphera-specimen-${org.id}.png`;
+    link.href = card.toDataURL('image/png');
+    link.click();
   }
 
   drawNeuralNet(org) {

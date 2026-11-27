@@ -25,6 +25,7 @@ import { EvolutionChart } from './ui/EvolutionChart.js';
 import { Minimap } from './ui/Minimap.js';
 import { WorldSettings } from './ui/WorldSettings.js';
 import { WorldIO } from './engine/WorldIO.js';
+import { Challenges } from './engine/Challenges.js';
 import { setIcon, setLabel, setPressed, setupModalDismissal, isModalOpen, openModal, closeModal, showCopyDialog } from './ui/dom.js';
 
 const SAVE_KEY = 'biosphera_ecosave';
@@ -44,6 +45,7 @@ class BiospheraApp {
     this.seasons = new SeasonCycle(75);
     this.species = new SpeciesRegistry();
     this.records = new HallOfFame();
+    this.challenges = new Challenges();
     this.lastAutosave = performance.now();
 
     // 2. World & Camera
@@ -134,12 +136,14 @@ class BiospheraApp {
       this.inspector.deselect();
       this.camera.target = null;
       this.species = new SpeciesRegistry();
+      this.challenges = new Challenges();
       this.chart.reset();
       this.evoChart.reset();
       this.lastSeason = '';
       this.knownSpecies.clear();
       this.speciesBootstrapped = false;
       this.lastLoggedGenMilestone = 1;
+      this.updateChallengesBadge();
       this.logFieldEvent('Biosphere reset — new genesis seeded.', 'info');
     };
 
@@ -170,6 +174,7 @@ class BiospheraApp {
     this.setupPWA();
     setupModalDismissal();
     this.updateTrophyBadge();
+    this.updateChallengesBadge();
     this.updateSeasonButton();
     this.syncToggleButtons();
     document.getElementById('trends-legend')?.insertAdjacentHTML('afterbegin', this.evoChart.legendHTML());
@@ -418,6 +423,25 @@ class BiospheraApp {
       this.controls.showToast(`View mode: ${e.target.options[e.target.selectedIndex].text}`);
     });
 
+    // Pheromone Scent & Ocean Currents Overlays
+    const btnOverlayScent = document.getElementById('btn-overlay-scent');
+    btnOverlayScent?.addEventListener('click', () => {
+      this.renderer.showPheromones = !this.renderer.showPheromones;
+      const active = Boolean(this.renderer.showPheromones);
+      btnOverlayScent.classList.toggle('active', active);
+      setPressed(btnOverlayScent, active);
+      this.controls.showToast(active ? 'Pheromone scent overlay on.' : 'Pheromone scent overlay off.');
+    });
+
+    const btnOverlayCurrents = document.getElementById('btn-overlay-currents');
+    btnOverlayCurrents?.addEventListener('click', () => {
+      this.renderer.showCurrents = !this.renderer.showCurrents;
+      const active = Boolean(this.renderer.showCurrents);
+      btnOverlayCurrents.classList.toggle('active', active);
+      setPressed(btnOverlayCurrents, active);
+      this.controls.showToast(active ? 'Current streamlines overlay on.' : 'Current streamlines overlay off.');
+    });
+
     // Day / Night cycle toggle — 3-state: Auto → locked Day → locked Night → Auto
     const btnDayNight = document.getElementById('btn-day-night');
     btnDayNight?.addEventListener('click', () => {
@@ -494,6 +518,11 @@ class BiospheraApp {
       this.controls.showToast('Organism cloned with a fresh mutation.');
     };
 
+    // Clone to Gene Lab
+    this.inspector.onCloneToLab = (org) => {
+      this.geneLab.openWithDNA(org.dna);
+    };
+
     // Kill
     this.inspector.onKill = (org) => {
       org.isDead = true;
@@ -545,6 +574,15 @@ class BiospheraApp {
 
     document.getElementById('btn-close-trophies')?.addEventListener('click', () => {
       closeModal(document.getElementById('trophies-modal'));
+    });
+
+    // Scientific Challenges modal trigger
+    document.getElementById('btn-challenges')?.addEventListener('click', () => {
+      this.showChallengesModal();
+    });
+
+    document.getElementById('btn-close-challenges')?.addEventListener('click', () => {
+      closeModal(document.getElementById('challenges-modal'));
     });
 
     // Cladogram Lineage modal
@@ -711,6 +749,42 @@ class BiospheraApp {
     }
   }
 
+  updateChallengesBadge() {
+    const badge = document.getElementById('challenges-count');
+    if (badge && this.challenges) {
+      badge.innerText = `${this.challenges.completedIds.size}/${this.challenges.challenges.length}`;
+    }
+  }
+
+  renderChallengesList() {
+    const list = document.getElementById('challenges-list');
+    if (!list || !this.challenges) return;
+
+    list.innerHTML = this.challenges.challenges.map((c) => {
+      const pct = Math.min(100, Math.round((c.progress / Math.max(1, c.target)) * 100));
+      return `
+        <div class="challenge-card ${c.completed ? 'completed' : ''}">
+          <div class="challenge-head">
+            <span class="challenge-title">${c.title}</span>
+            ${c.completed ? '<span class="badge badge-herbivore">Completed</span>' : '<span class="badge">Active</span>'}
+          </div>
+          <div class="challenge-desc">${c.description}</div>
+          <div class="challenge-progress-row">
+            <div class="progress-bar"><div class="progress-fill" style="width: ${pct}%"></div></div>
+            <span class="challenge-progress-text">${c.progress} / ${c.target}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  showChallengesModal() {
+    const modal = document.getElementById('challenges-modal');
+    if (!modal) return;
+    this.renderChallengesList();
+    openModal(modal);
+  }
+
   updateSeasonButton() {
     const btn = document.getElementById('btn-season');
     if (!btn) return;
@@ -773,11 +847,13 @@ class BiospheraApp {
     this.inspector.deselect();
     this.camera.target = null;
     this.species = new SpeciesRegistry();
+    this.challenges = new Challenges();
     this.chart.reset();
     this.evoChart.reset();
     this.centerCameraOnWorld();
     this.updateSeasonButton();
     this.syncToggleButtons();
+    this.updateChallengesBadge();
     this.lastDayPhase = '';
     this.knownSpecies.clear();
     this.speciesBootstrapped = false;
@@ -999,14 +1075,41 @@ class BiospheraApp {
       this.achievements.checkMilestones(this.world);
       this.records.update(this.world, currentTime);
       this.soundEngine.updateTelemetry(this.world, this.dayNight);
+
+      const { challenges, newlyCompleted } = this.challenges.evaluate(this.world, this.species, this.seasons);
+      this.updateChallengesBadge();
+      if (newlyCompleted.length > 0) {
+        for (const id of newlyCompleted) {
+          const ch = challenges.find((c) => c.id === id);
+          if (ch) {
+            this.soundEngine.playBirth();
+            this.controls.showToast(`Challenge completed: ${ch.title}`);
+            this.logFieldEvent(`Challenge completed: ${ch.title}`, 'milestone');
+          }
+        }
+      }
+      const chModal = document.getElementById('challenges-modal');
+      if (chModal && chModal.style.display === 'flex') {
+        this.renderChallengesList();
+      }
     }
 
     // Record population history in chart
     this.chart.record(stats, currentTime);
 
-    // 1. Simulation Step & Circadian Cycle
+    // 1. Simulation Step & Circadian Cycle (frame-skipping fixed-dt for 20x/50x Deep-Time Warp)
     const hadOrganisms = this.world.organisms.length > 0;
-    this.world.update(dt);
+    if (this.world.timeScale > 10 && !this.world.isPaused) {
+      const stepDt = 1 / 30;
+      const maxSubsteps = Math.min(24, Math.max(1, Math.ceil((dt * this.world.timeScale) / stepDt)));
+      const stepStart = performance.now();
+      for (let s = 0; s < maxSubsteps; s++) {
+        this.world.stepOnce(stepDt);
+        if (s >= 4 && performance.now() - stepStart > 12) break;
+      }
+    } else {
+      this.world.update(dt);
+    }
     if (
       hadOrganisms &&
       this.world.organisms.length === 15 &&

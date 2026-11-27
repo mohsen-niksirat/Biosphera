@@ -19,6 +19,7 @@ export class World {
     this.foods = [];
     this.hazards = [];
     this.particles = []; // Visual particle bursts (mitosis, eating, deaths)
+    this.habitats = this._createHabitats();
 
     this.spatialOrganisms = new SpatialHash(90, width, height);
     this.spatialFoods = new SpatialHash(70, width, height);
@@ -66,6 +67,53 @@ export class World {
     this.loadPreset('sanctuary');
   }
 
+  _createHabitats() {
+    const minDim = Math.min(this.width, this.height);
+    return [
+      {
+        id: 'reef',
+        type: 'reef',
+        name: 'Coral Reef',
+        x: this.width * 0.25,
+        y: this.height * 0.35,
+        radius: minDim * 0.18
+      },
+      {
+        id: 'thermal',
+        type: 'thermal',
+        name: 'Thermal Trench',
+        x: this.width * 0.75,
+        y: this.height * 0.65,
+        radius: minDim * 0.16
+      },
+      {
+        id: 'upwelling',
+        type: 'upwelling',
+        name: 'Nutrient Upwelling',
+        x: this.width * 0.5,
+        y: this.height * 0.5,
+        radius: minDim * 0.17
+      }
+    ];
+  }
+
+  _getHabitatAt(x, y, type) {
+    for (let i = 0; i < this.habitats.length; i++) {
+      const h = this.habitats[i];
+      if (type && h.type !== type) continue;
+      let dx = x - h.x;
+      let dy = y - h.y;
+      if (dx > this.width * 0.5) dx -= this.width;
+      else if (dx < -this.width * 0.5) dx += this.width;
+      if (dy > this.height * 0.5) dy -= this.height;
+      else if (dy < -this.height * 0.5) dy += this.height;
+      if (dx * dx + dy * dy <= h.radius * h.radius) {
+        return h;
+      }
+    }
+    return null;
+  }
+
   _handleEat(org, type) {
     if (type === 'bite') {
       this.pheromones.deposit(org.x, org.y, 'danger', 0.4);
@@ -88,6 +136,8 @@ export class World {
     this.iceAgeTimer = 0;
     this.pheromones = new PheromoneField(this.width, this.height);
     this._env.pheromones = this.pheromones;
+    this.habitats = this._createHabitats();
+    this.habitats = this._createHabitats();
 
     switch (presetName) {
       case 'wasteland':
@@ -241,17 +291,38 @@ export class World {
 
         this.foods.push(new Food(fx, fy, 'plant'));
       }
+
+      // Habitat plant growth boosts (Coral Reef & Nutrient Upwelling)
+      for (const h of this.habitats) {
+        if (this.foods.length >= this.maxFoodCap) break;
+        const rate = h.type === 'reef' ? 3.5 : (h.type === 'upwelling' ? 2.0 : 0);
+        if (rate > 0 && Math.random() < rate * this.foodRateMultiplier * dt) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = Math.sqrt(Math.random()) * h.radius;
+          const fx = (h.x + Math.cos(angle) * dist + this.width) % this.width;
+          const fy = (h.y + Math.sin(angle) * dist + this.height) % this.height;
+          this.foods.push(new Food(fx, fy, 'plant'));
+        }
+      }
     }
 
-    // 4. UPDATE EXISTING FOOD
+    // 4. UPDATE EXISTING FOOD (detritus decay releases a small plant-fertilizer pulse)
     for (let i = this.foods.length - 1; i >= 0; i--) {
       const food = this.foods[i];
-      if (food.energy <= 0 || !food.update(dt)) {
+      if (food.energy <= 0) {
+        this.foods.splice(i, 1);
+      } else if (!food.update(dt)) {
+        const wasDecayedMeat = food.type === 'meat';
+        const fx = food.x;
+        const fy = food.y;
         // Zero the energy before culling: the spatial hash still holds this
         // object until the next rebuild, and a zero gate stops organisms from
         // eating (or sensing) food that has already rotted away.
         food.energy = 0;
         this.foods.splice(i, 1);
+        if (wasDecayedMeat && this.foods.length < this.maxFoodCap) {
+          this.foods.push(new Food(fx, fy, 'plant', 20));
+        }
       }
     }
 
@@ -266,6 +337,10 @@ export class World {
 
     for (let i = this.organisms.length - 1; i >= 0; i--) {
       const org = this.organisms[i];
+      // Thermal Trench boosts local mutation rate
+      this._env.mutationScale = this._getHabitatAt(org.x, org.y, 'thermal')
+        ? this.mutationScale * 2.5
+        : this.mutationScale;
       // Births are gated before the parent pays the reproductive cost, so a
       // full biosphere cannot leave parents with phantom offspring.
       this._env.allowBirth = (this.organisms.length + newborns.length) < this.maxPopulationCap;
@@ -451,6 +526,8 @@ export class World {
     this.spatialFoods = new SpatialHash(70, this.width, this.height);
     this.pheromones = new PheromoneField(this.width, this.height);
     this._env.pheromones = this.pheromones;
+    this.habitats = this._createHabitats();
+    this.habitats = this._createHabitats();
 
     this.foodSpawnRate = Number.isFinite(data.foodSpawnRate) ? data.foodSpawnRate : 16;
     this.maxFoodCap = Number.isFinite(data.maxFoodCap) ? Math.max(1, data.maxFoodCap) : 300;

@@ -38,7 +38,9 @@ describe('World', () => {
   it('rescues ecosystem from extinction when all organisms die', () => {
     const world = new World(1200, 900);
     world.foods = [];
+    world.foodSpawnRate = 0;
     for (const org of world.organisms) {
+      org.dna.diet = -1;
       org.energy = 0.001;
     }
     // Step enough time for basal metabolism to kill everyone
@@ -118,5 +120,20 @@ describe('World', () => {
     world.stepOnce(0.05);
     assert.ok(!world.organisms.includes(prey), 'dead prey should be removed immediately');
     assert.ok(world.totalDeaths >= 1);
+  });
+
+  it('initializes 3 spatial habitats and recycles decayed meat into plant fertilizer', async () => {
+    const { Food } = await import('../src/entities/Food.js');
+    const world = new World(1200, 900);
+    assert.equal(world.habitats.length, 3);
+    assert.deepEqual(world.habitats.map((h) => h.type).sort(), ['reef', 'thermal', 'upwelling']);
+
+    world.organisms = [];
+    world.currentStrength = 0;
+    world.foods = [new Food(500, 500, 'meat', 1.01)];
+    // Decaying meat drops below 1 energy and spawns a plant pulse
+    world.stepOnce(2.0);
+    const plants = world.foods.filter((f) => f.type === 'plant' && Math.hypot(f.x - 500, f.y - 500) < 1);
+    assert.ok(plants.length >= 1, 'decayed meat should spawn a plant fertilizer pulse');
   });
 });

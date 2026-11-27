@@ -77,6 +77,36 @@ export class GeneLab {
     this.startPreviewLoop();
   }
 
+  /** Pre-populate Gene Lab sliders from an existing organism's DNA and open. */
+  openWithDNA(dna) {
+    if (!dna) return;
+    const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+    const fovDeg = Math.round(((dna.sensorFov ?? Math.PI * 0.9) * 180) / Math.PI);
+
+    this.traits.size = clamp(Number(dna.size ?? 12), 6, 22);
+    this.traits.speed = clamp(Number(dna.speed ?? 3.0), 1.5, 5.5);
+    this.traits.sensorRange = clamp(Number(dna.sensorRange ?? 160), 60, 300);
+    this.traits.sensorFov = (clamp(fovDeg, 45, 300) * Math.PI) / 180;
+    this.traits.diet = clamp(Number(dna.diet ?? -0.6), -1, 1);
+    this.traits.colorHue = Math.round(clamp(Number(dna.colorHue ?? 175), 0, 360));
+
+    const syncSlider = (id, val, labelText) => {
+      const el = document.getElementById(id);
+      const valLabel = document.getElementById(`${id}-val`);
+      if (el) el.value = String(val);
+      if (valLabel) valLabel.innerText = labelText ?? String(val);
+    };
+
+    syncSlider('gene-size', this.traits.size, this.traits.size.toFixed(1));
+    syncSlider('gene-speed', this.traits.speed, this.traits.speed.toFixed(1));
+    syncSlider('gene-vision', Math.round(this.traits.sensorRange), String(Math.round(this.traits.sensorRange)));
+    syncSlider('gene-fov', clamp(fovDeg, 45, 300), String(clamp(fovDeg, 45, 300)));
+    syncSlider('gene-diet', this.traits.diet);
+    syncSlider('gene-hue', this.traits.colorHue, String(this.traits.colorHue));
+
+    this.open();
+  }
+
   stopPreview() {
     if (this.animFrame) {
       cancelAnimationFrame(this.animFrame);

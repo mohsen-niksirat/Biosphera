@@ -17,6 +17,13 @@ export class Renderer {
     this.selectedOrganism = null;
     this.hoveredOrganism = null;
     this.viewMode = 'standard'; // 'standard' | 'sensory' | 'heatmap'
+    this.showPheromones = false;
+    this.showCurrents = false;
+
+    // Offscreen pheromone overlay buffer
+    this.pheromoneCanvas = document.createElement('canvas');
+    this.pheromoneCtx = this.pheromoneCanvas.getContext('2d');
+    this.pheromoneImgData = null;
 
     // Offscreen sprite caches (eliminates per-frame createRadialGradient & shadowBlur)
     this.hazardSprite = this._createRadialSprite(
@@ -137,6 +144,19 @@ export class Renderer {
 
     // 2. WORLD BOUNDARY & GRID
     this.drawWorldGrid(world);
+
+    // 2.5 BIOME HABITAT ZONES (subtle deep-ocean floor rings)
+    if (world.habitats && world.habitats.length > 0) {
+      this.drawHabitats(world);
+    }
+
+    // 2.6 OPTIONAL OVERLAYS (Pheromone scent & Water currents)
+    if (this.showPheromones && world.pheromones) {
+      this.drawPheromones(world);
+    }
+    if (this.showCurrents) {
+      this.drawCurrents(world);
+    }
 
     // 3. PARALLAX MARINE SNOW / DRIFTING PLANKTON
     this.drawAmbientPlankton(world, isBioluminescent);
@@ -371,6 +391,151 @@ export class Renderer {
     ctx.strokeStyle = 'rgba(63, 224, 208, 0.55)';
     ctx.lineWidth = 3;
     ctx.strokeRect(0, 0, world.width, world.height);
+  }
+
+  drawHabitats(world) {
+    const ctx = this.ctx;
+    const habitats = world.habitats;
+    for (let i = 0; i < habitats.length; i++) {
+      const h = habitats[i];
+      const r = h.radius ?? 260;
+      if (!this.isInView(h.x, h.y, r + 20)) continue;
+
+      const key = String(h.type || h.id || h.name || '').toLowerCase();
+      let stroke = 'rgba(56, 189, 248, 0.22)';
+      let fill = 'rgba(56, 189, 248, 0.04)';
+      if (key.includes('reef') || key.includes('coral')) {
+        stroke = 'rgba(45, 212, 191, 0.24)';
+        fill = 'rgba(45, 212, 191, 0.045)';
+      } else if (key.includes('thermal') || key.includes('trench') || key.includes('vent')) {
+        stroke = 'rgba(245, 158, 11, 0.24)';
+        fill = 'rgba(245, 158, 11, 0.045)';
+      } else if (key.includes('upwell') || key.includes('nutrient')) {
+        stroke = 'rgba(52, 211, 153, 0.24)';
+        fill = 'rgba(52, 211, 153, 0.045)';
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      ctx.setLineDash([10, 10]);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      // Inner organic contour ring
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, r * 0.72, 0, Math.PI * 2);
+      ctx.setLineDash([4, 14]);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      if (h.name && this.camera.zoom >= 0.45) {
+        ctx.fillStyle = stroke.replace(/0\.\d+\)$/, '0.55)');
+        ctx.font = '600 11px ui-monospace, Consolas, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(h.name.toUpperCase(), h.x, h.y - r + 18);
+      }
+      ctx.restore();
+    }
+  }
+
+  drawPheromones(world) {
+    const ph = world.pheromones;
+    if (!ph || !this.pheromoneCtx || !ph.cols || !ph.rows) return;
+
+    if (this.pheromoneCanvas.width !== ph.cols || this.pheromoneCanvas.height !== ph.rows) {
+      this.pheromoneCanvas.width = ph.cols;
+      this.pheromoneCanvas.height = ph.rows;
+      this.pheromoneImgData = this.pheromoneCtx.createImageData(ph.cols, ph.rows);
+    }
+
+    const data = this.pheromoneImgData.data;
+    const len = ph.cols * ph.rows;
+    const food = ph.food;
+    const danger = ph.danger;
+
+    for (let i = 0; i < len; i++) {
+      const f = Math.min(1, (food[i] || 0) * 0.55);
+      const d = Math.min(1, (danger[i] || 0) * 0.65);
+      const idx = i * 4;
+
+      if (f < 0.015 && d < 0.015) {
+        data[idx + 3] = 0;
+        continue;
+      }
+
+      // Blend food (bio-teal/emerald) and danger (soft rose)
+      const total = f + d;
+      data[idx] = Math.round((36 * f + 251 * d) / total);
+      data[idx + 1] = Math.round((216 * f + 100 * d) / total);
+      data[idx + 2] = Math.round((178 * f + 130 * d) / total);
+      data[idx + 3] = Math.min(175, Math.round(Math.max(f, d) * 165));
+    }
+
+    this.pheromoneCtx.putImageData(this.pheromoneImgData, 0, 0);
+
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(this.pheromoneCanvas, 0, 0, world.width, world.height);
+    ctx.restore();
+  }
+
+  drawCurrents(world) {
+    const flow = world.flowField ?? world.flow;
+    if (!flow || typeof flow.sample !== 'function') return;
+
+    const ctx = this.ctx;
+    const step = 140;
+    const viewW = this.canvas.width / this.camera.scale;
+    const viewH = this.canvas.height / this.camera.scale;
+    const startX = Math.floor(Math.max(0, this.camera.x) / step) * step + step * 0.5;
+    const endX = Math.min(world.width, this.camera.x + viewW);
+    const startY = Math.floor(Math.max(0, this.camera.y) / step) * step + step * 0.5;
+    const endY = Math.min(world.height, this.camera.y + viewH);
+    const phase = (flow.time ?? 0) * 2.2;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(125, 211, 252, 0.24)';
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+
+    for (let y = startY; y <= endY; y += step) {
+      for (let x = startX; x <= endX; x += step) {
+        const { vx, vy } = flow.sample(x, y);
+        const mag = Math.hypot(vx, vy);
+        if (mag < 1) continue;
+
+        const nx = vx / mag;
+        const ny = vy / mag;
+        const len = Math.min(42, 14 + mag * 0.75);
+        const drift = Math.sin(phase + (x + y) * 0.01) * 6;
+        const cx = x + nx * drift;
+        const cy = y + ny * drift;
+        const ex = cx + nx * len;
+        const ey = cy + ny * len;
+
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(ex, ey);
+
+        // Subtle chevron tip
+        const head = 5.5;
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - nx * head + ny * head * 0.55, ey - ny * head - nx * head * 0.55);
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - nx * head - ny * head * 0.55, ey - ny * head + nx * head * 0.55);
+      }
+    }
+
+    ctx.stroke();
+    ctx.restore();
   }
 
   drawOrganism(org, isSelected, isHovered, isBioluminescent) {

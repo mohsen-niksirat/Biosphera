@@ -1425,6 +1425,61 @@ svg {
   color: var(--ink-muted);
 }
 
+.challenges-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.challenge-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.challenge-card.completed {
+  border-color: var(--accent-line);
+}
+
+.challenge-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.challenge-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.challenge-desc {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.challenge-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.challenge-progress-row .progress-bar {
+  flex: 1;
+  margin-top: 0;
+}
+
+.challenge-progress-text {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+}
+
 .records-title {
   margin: 18px 0 8px;
   font-size: 10px;
@@ -1793,7 +1848,7 @@ kbd {
    ========================================================================== */
 
 /* Tighten the header before labels start to overflow the instrument strip */
-@media (max-width: 1360px) {
+@media (max-width: 1580px) {
   .btn-icon-action .btn-label {
     display: none;
   }

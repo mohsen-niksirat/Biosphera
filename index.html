@@ -162,6 +162,9 @@
         <circle cx="10" cy="12" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
         <circle cx="14" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
       </symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24">
+        <path d="M5 3.5v17M5 4.5h11.5l-2.2 4 2.2 4H5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
     </defs>
   </svg>
 
@@ -216,6 +219,14 @@
             <option value="sensory">Sensory mesh</option>
             <option value="heatmap">Heatmap</option>
           </select>
+          <button id="btn-overlay-scent" class="btn btn-icon-action" title="Toggle pheromone scent field overlay" aria-label="Toggle scent overlay" aria-pressed="false">
+            <svg class="icon" aria-hidden="true"><use href="#i-waves"/></svg>
+            <span class="btn-label">Scent</span>
+          </button>
+          <button id="btn-overlay-currents" class="btn btn-icon-action" title="Toggle ocean current streamlines overlay" aria-label="Toggle flow overlay" aria-pressed="false">
+            <svg class="icon" aria-hidden="true"><use href="#i-cycle"/></svg>
+            <span class="btn-label">Flow</span>
+          </button>
         </div>
 
         <div class="action-cluster">
@@ -242,6 +253,11 @@
             <svg class="icon" aria-hidden="true"><use href="#i-trophy"/></svg>
             <span class="btn-label">Trophies</span>
             <span id="trophy-count" class="count-bubble">0/12</span>
+          </button>
+          <button id="btn-challenges" class="btn btn-icon-action" title="View live scientific challenges" aria-label="Open Challenges">
+            <svg class="icon" aria-hidden="true"><use href="#i-flag"/></svg>
+            <span class="btn-label">Challenges</span>
+            <span id="challenges-count" class="count-bubble">0/4</span>
           </button>
           <button id="btn-lineage" class="btn btn-icon-action" title="View phylogenetic tree" aria-label="Open Lineage tree">
             <svg class="icon" aria-hidden="true"><use href="#i-tree"/></svg>
@@ -395,6 +411,8 @@
             <button class="btn-speed" data-speed="2" aria-pressed="false">2x</button>
             <button class="btn-speed" data-speed="5" aria-pressed="false">5x</button>
             <button class="btn-speed" data-speed="10" aria-pressed="false">10x</button>
+            <button class="btn-speed" data-speed="20" aria-pressed="false">20x</button>
+            <button class="btn-speed" data-speed="50" aria-pressed="false">50x</button>
           </div>
         </div>
 
@@ -529,6 +547,20 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Challenges Modal -->
+    <div id="challenges-modal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="challenges-title">
+        <div class="modal-header">
+          <h3 id="challenges-title">Scientific Challenges</h3>
+          <button id="btn-close-challenges" class="btn-icon" aria-label="Close Challenges"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">Live evolutionary benchmarks evaluated against the current biosphere.</p>
+          <div id="challenges-list" class="challenges-list"></div>
         </div>
       </div>
     </div>
