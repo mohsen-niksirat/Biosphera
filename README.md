@@ -3,6 +3,8 @@
 > **In-browser digital life simulation powered by genetic algorithms, tiny neural networks, and natural selection.**  
 > *Zero dependencies. 100% Client-Side. 60 FPS Emergent Evolution.*
 
+![Biosphera Live Simulation](docs/screenshot.png)
+
 ---
 
 ## 🌟 Highlights & Overview
