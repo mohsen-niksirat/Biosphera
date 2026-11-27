@@ -4,12 +4,16 @@ import { DNA } from '../src/genetics/DNA.js';
 import { NeuralNet } from '../src/brain/NeuralNet.js';
 
 describe('DNA', () => {
-  it('creates valid default traits and a 9-input brain', () => {
+  it('creates valid default traits and a 13-input brain', () => {
     const dna = new DNA();
     assert.ok(dna.size >= 8 && dna.size <= 16);
     assert.ok(dna.speed >= 2 && dna.speed <= 4);
     assert.ok(dna.diet >= -1 && dna.diet <= 1);
-    assert.equal(dna.brain.topology.inputs, 9);
+    assert.ok(dna.jawPower >= 0.8 && dna.jawPower <= 1.2);
+    assert.ok(dna.armor >= 0 && dna.armor <= 0.35);
+    assert.ok(dna.finCount >= 1 && dna.finCount <= 3);
+    assert.ok(dna.fatReserve >= 0.2 && dna.fatReserve <= 0.6);
+    assert.equal(dna.brain.topology.inputs, 13);
     assert.equal(dna.brain.topology.outputs, 4);
   });
 
@@ -25,6 +29,10 @@ describe('DNA', () => {
       assert.ok(dna.diet >= -1 && dna.diet <= 1);
       assert.ok(dna.reproduceThreshold >= 130 && dna.reproduceThreshold <= 240);
       assert.ok(dna.gestationShare >= 0.4 && dna.gestationShare <= 0.6);
+      assert.ok(dna.jawPower >= 0.5 && dna.jawPower <= 2.0);
+      assert.ok(dna.armor >= 0.0 && dna.armor <= 1.0);
+      assert.ok(dna.finCount >= 0 && dna.finCount <= 6);
+      assert.ok(dna.fatReserve >= 0.0 && dna.fatReserve <= 1.0);
     }
   });
 
@@ -34,9 +42,9 @@ describe('DNA', () => {
     const child = DNA.crossover(a, b);
     assert.ok(child.size === 10 || child.size === 18);
     assert.ok(child.diet === -0.8 || child.diet === 0.8);
-    assert.equal(child.brain.topology.inputs, 9);
+    assert.equal(child.brain.topology.inputs, 13);
 
-    // Legacy 8-input parent vs 9-input parent falls back to parent A's brain
+    // Legacy 8-input parent vs 13-input parent falls back to parent A's brain
     const legacy = new DNA({
       brain: new NeuralNet({ inputs: 8, hiddens: [7], outputs: 4 })
     });
@@ -66,5 +74,35 @@ describe('DNA', () => {
       b: new NeuralNet().serialize()
     }));
     assert.equal(DNA.deserialize(badPayload), null);
+
+    const nonPositiveSize = btoa(JSON.stringify({
+      s: 0, v: 2, sr: 100, fov: 2, h: 10, d: 0, rt: 150, gs: 0.5,
+      b: new NeuralNet().serialize()
+    }));
+    assert.equal(DNA.deserialize(nonPositiveSize), null);
+
+    const nonPositiveThreshold = btoa(JSON.stringify({
+      s: 10, v: 2, sr: 100, fov: 2, h: 10, d: 0, rt: -5, gs: 0.5,
+      b: new NeuralNet().serialize()
+    }));
+    assert.equal(DNA.deserialize(nonPositiveThreshold), null);
+  });
+
+  it('validates/clamps trait ranges and loads legacy DNA without morphological fields', () => {
+    const legacyPayload = btoa(JSON.stringify({
+      s: 999, v: 50, sr: 10, fov: 10, h: 400, d: -5, rt: 999, gs: 0.99,
+      b: new NeuralNet({ inputs: 9, hiddens: [7], outputs: 4 }).serialize()
+    }));
+    const restored = DNA.deserialize(legacyPayload);
+    assert.ok(restored instanceof DNA);
+    assert.equal(restored.size, 30);
+    assert.equal(restored.speed, 8.0);
+    assert.equal(restored.sensorRange, 20);
+    assert.equal(restored.diet, -1.0);
+    assert.equal(restored.reproduceThreshold, 500);
+    assert.equal(restored.jawPower, 1.0);
+    assert.equal(restored.armor, 0.15);
+    assert.equal(restored.finCount, 2);
+    assert.equal(restored.fatReserve, 0.2);
   });
 });

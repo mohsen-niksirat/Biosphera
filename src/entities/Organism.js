@@ -20,7 +20,7 @@ export class Organism {
     this.radius = this.dna.size;
 
     this.energy = initialEnergy;
-    this.maxEnergy = this.dna.reproduceThreshold * 1.35;
+    this.maxEnergy = this.dna.reproduceThreshold * (1.25 + (this.dna.fatReserve ?? 0.2) * 0.5);
     this.health = 100;
     this.age = 0;
     this.isDead = false;
@@ -32,8 +32,9 @@ export class Organism {
     this.reproduceCooldown = 6.0; // Must mature before reproducing
     this.biteCooldown = 0; // Predation is rate-limited so prey can escape
 
-    this.latestInputs = new Float32Array(9);
+    this.latestInputs = new Float32Array(13);
     this.latestOutputs = new Float32Array(4);
+    this.memoryState = new Float32Array(2);
     this.nearestTarget = null;
     this.tailPhase = Math.random() * Math.PI * 2;
   }
@@ -57,6 +58,11 @@ export class Organism {
     // 2. THINK
     const outputs = this.dna.brain.feedForward(inputs);
     this.latestOutputs.set(outputs);
+    const hiddenLayer = this.dna.brain.layerActivations[1];
+    if (hiddenLayer && hiddenLayer.length >= 2) {
+      this.memoryState[0] = hiddenLayer[0];
+      this.memoryState[1] = hiddenLayer[1];
+    }
 
     const steer = outputs[0];
     const thrust = (outputs[1] + 1) * 0.5;
@@ -64,12 +70,18 @@ export class Organism {
     const splitIntent = outputs[3];
 
     // 3. ACT & MOVE
-    const maxTurnRate = Math.PI * 2.2;
+    const finCount = this.dna.finCount ?? 2;
+    const armor = this.dna.armor ?? 0.15;
+    const jawPower = this.dna.jawPower ?? 1.0;
+    const fatReserve = this.dna.fatReserve ?? 0.2;
+
+    const maxTurnRate = Math.PI * (1.8 + finCount * 0.15);
     this.heading += steer * maxTurnRate * dt;
     this.heading = (this.heading + Math.PI * 3) % (Math.PI * 2) - Math.PI;
 
     // All kinematics in px/second (frame-rate independent; tuned for a 60 FPS baseline)
-    const accel = thrust * this.dna.speed * 45 * 60;
+    const speedMult = (1 - armor * 0.25) * (1 - fatReserve * 0.12);
+    const accel = thrust * this.dna.speed * speedMult * (1 + finCount * 0.05) * 45 * 60;
     this.vx += Math.cos(this.heading) * accel * dt;
     this.vy += Math.sin(this.heading) * accel * dt;
 
@@ -78,7 +90,7 @@ export class Organism {
     this.vy *= Math.pow(drag, dt * 60);
 
     const currentSpeed = Math.hypot(this.vx, this.vy);
-    const maxSpeed = this.dna.speed * 1.5 * 60;
+    const maxSpeed = this.dna.speed * speedMult * 1.5 * 60;
     if (currentSpeed > maxSpeed) {
       this.vx = (this.vx / currentSpeed) * maxSpeed;
       this.vy = (this.vy / currentSpeed) * maxSpeed;
@@ -88,15 +100,13 @@ export class Organism {
     this.y += this.vy * dt;
 
     // Toroidal world wrapping
-    if (this.x < 0) this.x += worldWidth;
-    else if (this.x > worldWidth) this.x -= worldWidth;
-    if (this.y < 0) this.y += worldHeight;
-    else if (this.y > worldHeight) this.y -= worldHeight;
+    this.x = wrapCoord(this.x, worldWidth);
+    this.y = wrapCoord(this.y, worldHeight);
 
     // 4. METABOLISM & ENERGY BURN (speed normalized back to 60fps-frame units so burn rates stay calibrated)
-    const basalCost = 0.35 + (this.dna.size / 15) * 0.25;
+    const basalCost = 0.35 + (this.dna.size / 15) * 0.25 + armor * 0.25 + (jawPower - 0.5) * 0.12 + finCount * 0.03;
     const frameSpeed = currentSpeed / 60;
-    const kineticCost = (frameSpeed * frameSpeed * 0.04) * (this.dna.size / 10);
+    const kineticCost = (frameSpeed * frameSpeed * 0.04) * (this.dna.size / 10) * (1 + fatReserve * 0.2);
     const sensorCost = (this.dna.sensorRange / 200) * 0.15;
     const totalBurn = (basalCost + kineticCost + sensorCost) * dt * (env.metabolismMult ?? 1);
 
@@ -107,7 +117,7 @@ export class Organism {
       const dx = wrapDelta(hazard.x - this.x, env.width);
       const dy = wrapDelta(hazard.y - this.y, env.height);
       if (Math.hypot(dx, dy) < hazard.radius + this.radius) {
-        this.energy -= hazard.dps * dt;
+        this.energy -= hazard.dps * (1 - armor * 0.3) * dt;
       }
     }
 
@@ -211,14 +221,14 @@ export class Organism {
       childX,
       childY,
       childDNA,
-      this.generation + 1,
+      Math.max(this.generation, partner.generation) + 1,
       this.id,
       childEnergy
     );
   }
 
   sense(foods, organisms, hazards, env = {}) {
-    const inputs = [0, 0, 0, 0, 0, 0, 0, 1.0, 0];
+    const inputs = [0, 0, 0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 0];
     this.nearestTarget = null;
 
     let closestFoodDist = Infinity;
@@ -312,6 +322,15 @@ export class Organism {
     inputs[7] = 1.0;
     // Pheromone scent (food attracts, death repels) — 9th neural input
     inputs[8] = env.pheromones ? env.pheromones.sample(this.x, this.y) : 0;
+    // Internal state inputs: age/senescence ratio & reproduction readiness
+    const naturalLifespan = 180 + (this.dna.size * 5);
+    inputs[9] = Math.min(1.0, this.age / naturalLifespan);
+    inputs[10] = (this.age >= 6.0 && this.reproduceCooldown <= 0 && this.energy >= this.dna.reproduceThreshold)
+      ? 1.0
+      : Math.min(0.95, Math.max(0, this.energy / this.dna.reproduceThreshold) * (this.reproduceCooldown <= 0 ? 0.8 : 0.2));
+    // Recurrent memory from previous hidden state
+    inputs[11] = this.memoryState[0];
+    inputs[12] = this.memoryState[1];
 
     return inputs;
   }
@@ -360,7 +379,7 @@ export class Organism {
         const dist = Math.hypot(dx, dy);
 
         if (dist <= mouthReach + other.radius && other.dna.size <= this.dna.size * 1.3) {
-          const biteDmg = (this.dna.size * 2.5) * (1 + this.dna.diet);
+          const biteDmg = (this.dna.size * 2.5) * (1 + this.dna.diet) * (this.dna.jawPower ?? 1.0) * (1 - (other.dna.armor ?? 0) * 0.65);
           other.energy -= biteDmg;
 
           // Attacking costs energy (pursuit/handling). Without a cost, omnivores

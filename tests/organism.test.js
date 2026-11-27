@@ -30,12 +30,24 @@ describe('Organism', () => {
   });
 
   it('burns energy, takes hazard damage, and dies when energy reaches zero', () => {
-    const org = new Organism(100, 100, new DNA({ size: 10 }), 1, null, 20);
-    const hazard = new Hazard(100, 100, 50, 100); // 100 dps
+    const org = new Organism(100, 100, new DNA({ size: 10, armor: 0 }), 1, null, 20);
+    const hazard = new Hazard(100, 100, 150, 100); // 100 dps, wide enough not to outrun in 0.25s
 
     org.update(0.25, 2400, 1800, [], [], [hazard], { width: 2400, height: 1800 });
     assert.equal(org.isDead, true);
     assert.ok(org.energy <= 0);
+  });
+
+  it('populates internal-state inputs and persists recurrent memory state per organism', () => {
+    const org = new Organism(500, 500, new DNA({ size: 10 }), 1, null, 100);
+    org.age = 50;
+    org.reproduceCooldown = 0;
+    org.update(0.05, 2400, 1800, [], [], [], { width: 2400, height: 1800 });
+
+    assert.ok(org.latestInputs[9] > 0);
+    assert.ok(org.latestInputs[10] > 0);
+    assert.equal(org.memoryState[0], org.dna.brain.layerActivations[1][0]);
+    assert.equal(org.memoryState[1], org.dna.brain.layerActivations[1][1]);
   });
 
   it('feeds on plants and limits predation by biteCooldown', () => {
@@ -78,11 +90,11 @@ describe('Organism', () => {
     assert.ok(parent.energy <= parent.dna.reproduceThreshold * 0.7);
     assert.ok(child.energy > 0);
 
-    const mateA = new Organism(600, 600, new DNA({ reproduceThreshold: 140 }), 4, null, 150);
-    const mateB = new Organism(610, 600, new DNA({ reproduceThreshold: 140 }), 3, null, 150);
+    const mateA = new Organism(600, 600, new DNA({ reproduceThreshold: 140 }), 3, null, 150);
+    const mateB = new Organism(610, 600, new DNA({ reproduceThreshold: 140 }), 5, null, 150);
     const sexualChild = mateA.mateWith(mateB, { width: 2400, height: 1800 });
 
-    assert.equal(sexualChild.generation, 5);
+    assert.equal(sexualChild.generation, 6);
     assert.equal(mateA.childrenCount, 1);
     assert.equal(mateB.childrenCount, 1);
     assert.ok(mateA.reproduceCooldown >= 9);

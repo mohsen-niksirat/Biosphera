@@ -3,8 +3,8 @@
  */
 
 export const DEFAULT_BRAIN_TOPOLOGY = {
-  inputs: 9, // 7 sensory + bias + pheromone scent
-  hiddens: [7],
+  inputs: 13, // 7 sensory + bias + pheromone + 2 internal-state + 2 recurrent memory
+  hiddens: [9],
   outputs: 4
 };
 

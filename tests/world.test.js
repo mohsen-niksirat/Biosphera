@@ -104,4 +104,19 @@ describe('World', () => {
     assert.equal(stats.omnivores, 1);
     assert.equal(stats.fps, 60);
   });
+
+  it('cleans up predation deaths immediately within the same stepOnce', () => {
+    const world = new World(1200, 900);
+    world.organisms = [];
+    world.foods = [];
+    const prey = world.spawnOrganismAt(400, 400, new DNA({ size: 8, diet: -0.9, armor: 0 }));
+    prey.energy = 1;
+    const predator = world.spawnOrganismAt(402, 400, new DNA({ size: 18, diet: 1.0, jawPower: 2.0 }));
+    predator.performFeeding([], [prey], { width: 1200, height: 900 });
+    assert.equal(prey.isDead, true);
+
+    world.stepOnce(0.05);
+    assert.ok(!world.organisms.includes(prey), 'dead prey should be removed immediately');
+    assert.ok(world.totalDeaths >= 1);
+  });
 });

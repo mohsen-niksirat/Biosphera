@@ -2,6 +2,12 @@
  * Biosphera - Microscope & Neural Inspector
  */
 
+const INPUT_LABELS = [
+  'Food D', 'Food ∠', 'Org D', 'Org ∠', 'Role',
+  'Hazard', 'Energy', 'Bias', 'Scent', 'Age', 'Ready', 'Mem 1', 'Mem 2'
+];
+const OUTPUT_LABELS = ['Steer', 'Thrust', 'Bite', 'Split'];
+
 export class Inspector {
   constructor(containerId) {
     const el = document.getElementById(containerId);
@@ -172,24 +178,38 @@ export class Inspector {
 
   drawNeuralNet(org) {
     const ctx = this.netCtx;
-    const w = this.netCanvas.width;
-    const h = this.netCanvas.height;
+    const rect = this.netCanvas.getBoundingClientRect();
+    const w = Math.max(200, Math.round(rect.width || 280));
+    const h = Math.max(100, Math.round(rect.height || 156));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const targetW = Math.round(w * dpr);
+    const targetH = Math.round(h * dpr);
 
+    if (this.netCanvas.width !== targetW || this.netCanvas.height !== targetH) {
+      this.netCanvas.width = targetW;
+      this.netCanvas.height = targetH;
+    }
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
     const brain = org.dna.brain;
     const layerSizes = [brain.topology.inputs, ...brain.topology.hiddens, brain.topology.outputs];
     const layerCount = layerSizes.length;
+    const leftPad = 48;
+    const rightPad = 44;
+    const topPad = 10;
+    const bottomPad = 10;
 
     const nodePositions = [];
 
     for (let l = 0; l < layerCount; l++) {
       const count = layerSizes[l];
-      const x = 30 + (l / (layerCount - 1)) * (w - 60);
+      const x = leftPad + (l / (layerCount - 1)) * (w - leftPad - rightPad);
       const layerNodes = [];
 
       for (let n = 0; n < count; n++) {
-        const y = 20 + ((n + 0.5) / count) * (h - 40);
+        const y = topPad + ((n + 0.5) / count) * (h - topPad - bottomPad);
         layerNodes.push({ x, y });
       }
       nodePositions.push(layerNodes);
@@ -223,17 +243,22 @@ export class Inspector {
       }
     }
 
-    // Nodes
+    // Nodes & I/O Labels
+    ctx.font = '9px ui-monospace, Consolas, monospace';
+    ctx.textBaseline = 'middle';
+
     for (let l = 0; l < layerCount; l++) {
       const activations = brain.layerActivations[l];
       const nodes = nodePositions[l];
+      const isInput = l === 0;
+      const isOutput = l === layerCount - 1;
 
       for (let n = 0; n < nodes.length; n++) {
         const node = nodes[n];
         const act = activations[n] || 0;
 
         ctx.beginPath();
-        ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, nodes.length > 9 ? 3.8 : 4.5, 0, Math.PI * 2);
 
         if (act > 0) {
           ctx.fillStyle = `rgba(63, 224, 208, ${0.3 + act * 0.7})`;
@@ -245,6 +270,16 @@ export class Inspector {
         ctx.strokeStyle = 'rgba(220, 236, 242, 0.28)';
         ctx.lineWidth = 1;
         ctx.stroke();
+
+        if (isInput && INPUT_LABELS[n]) {
+          ctx.fillStyle = 'rgba(143, 169, 179, 0.85)';
+          ctx.textAlign = 'right';
+          ctx.fillText(INPUT_LABELS[n], node.x - 8, node.y);
+        } else if (isOutput && OUTPUT_LABELS[n]) {
+          ctx.fillStyle = 'rgba(220, 236, 242, 0.9)';
+          ctx.textAlign = 'left';
+          ctx.fillText(OUTPUT_LABELS[n], node.x + 8, node.y);
+        }
       }
     }
   }

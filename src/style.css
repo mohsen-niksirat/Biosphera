@@ -603,7 +603,7 @@ svg {
 #neural-canvas {
   display: block;
   width: 100%;
-  height: 132px;
+  height: 176px;
 }
 
 .neural-labels {
@@ -728,19 +728,29 @@ svg {
 }
 
 /* ==========================================================================
-   Bottom toolbar
+   Bottom toolbar & dock
    ========================================================================== */
 
-.bottom-bar {
+.bottom-dock {
   position: absolute;
   left: 50%;
   bottom: 14px;
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  pointer-events: none;
+}
+
+.bottom-bar {
+  position: relative;
+  display: flex;
   align-items: center;
   gap: 8px;
-  max-width: calc(100% - 24px);
+  max-width: 100%;
   padding: 6px;
   background: rgba(12, 26, 36, 0.94);
   border: 1px solid var(--line);
@@ -748,15 +758,14 @@ svg {
   box-shadow: var(--shadow);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  pointer-events: auto;
   transition:
     transform var(--dur-med) var(--ease-out),
     opacity var(--dur-base) var(--ease-snap);
 }
 
 .bottom-bar.toolbar-minimized {
-  transform: translate(-50%, calc(100% + 30px));
-  opacity: 0;
-  pointer-events: none;
+  display: none;
 }
 
 .bar-group {
@@ -838,14 +847,11 @@ svg {
 }
 
 .btn-toggle-toolbar {
-  position: absolute;
-  right: 12px;
-  bottom: 74px;
-  z-index: 55;
+  position: relative;
   display: none;
   align-items: center;
   gap: 5px;
-  height: 26px;
+  height: 28px;
   padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
@@ -853,6 +859,7 @@ svg {
   color: var(--ink-muted);
   font-size: 11px;
   cursor: pointer;
+  pointer-events: auto;
   transition:
     background-color var(--dur-fast) var(--ease-snap),
     color var(--dur-fast) var(--ease-snap),
@@ -955,18 +962,155 @@ svg {
 #evo-chart-canvas {
   display: block;
   width: 100%;
-  height: auto;
   background: var(--abyss-deep);
   border: 1px solid var(--line);
   border-radius: 6px;
 }
 
+#chart-canvas {
+  height: 96px;
+}
+
+#evo-chart-canvas {
+  height: 112px;
+}
+
 .trends-drawer {
-  top: 68px;
+  top: 12px;
   right: 12px;
   width: 380px;
   padding: 10px 12px;
   display: none;
+}
+
+@media (min-width: 841px) {
+  .viewport-container:has(#inspector-panel[style*="display: block"]) .trends-drawer {
+    right: 344px;
+  }
+}
+
+/* ==========================================================================
+   Live Field Log
+   ========================================================================== */
+
+.field-log {
+  left: 12px;
+  bottom: 14px;
+  z-index: 48;
+  width: 264px;
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+}
+
+.field-log-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.field-log-toggle:hover {
+  background: var(--panel-raised);
+}
+
+.field-log-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.field-log-title {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  flex: none;
+}
+
+.field-log-latest {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink);
+}
+
+.field-log-chev {
+  flex: none;
+  color: var(--ink-muted);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+.field-log.open .field-log-chev {
+  transform: rotate(180deg);
+}
+
+.field-log-list {
+  margin: 0;
+  padding: 6px 10px 8px;
+  list-style: none;
+  max-height: 168px;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-log-list[hidden] {
+  display: none;
+}
+
+.field-log-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--ink-muted);
+}
+
+.field-log-time {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: rgba(143, 169, 179, 0.72);
+}
+
+.field-log-msg {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+}
+
+.field-log-item.kind-disaster .field-log-msg {
+  color: var(--danger);
+}
+
+.field-log-item.kind-species .field-log-msg {
+  color: var(--accent);
+}
+
+.field-log-item.kind-milestone .field-log-msg {
+  color: var(--omni);
+}
+
+.field-log-item.kind-rescue .field-log-msg {
+  color: var(--herb);
 }
 
 /* ==========================================================================
@@ -999,6 +1143,28 @@ svg {
 
 .modal-lg {
   max-width: 720px;
+}
+
+.modal-sm {
+  max-width: 420px;
+}
+
+.dialog-input {
+  width: 100%;
+  min-height: 84px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--abyss-deep);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.dialog-input[hidden] {
+  display: none;
 }
 
 .modal-header {
@@ -1627,7 +1793,7 @@ kbd {
    ========================================================================== */
 
 /* Tighten the header before labels start to overflow the instrument strip */
-@media (max-width: 1900px) {
+@media (max-width: 1360px) {
   .btn-icon-action .btn-label {
     display: none;
   }
@@ -1638,6 +1804,18 @@ kbd {
 
   .select-scenario {
     max-width: 132px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .field-log {
+    top: 12px;
+    bottom: auto;
+    left: 12px;
+  }
+
+  .minimap-panel.open ~ .field-log {
+    top: 168px;
   }
 }
 
@@ -1795,7 +1973,7 @@ kbd {
   }
 
   #neural-canvas {
-    height: 104px;
+    height: 148px;
   }
 
   .minimap-panel {
@@ -1808,40 +1986,53 @@ kbd {
     height: 105px;
   }
 
-  .bottom-bar {
+  .field-log {
+    top: 8px;
+    left: 8px;
+    width: 210px;
+  }
+
+  .minimap-panel.open ~ .field-log {
+    top: 132px;
+  }
+
+  .bottom-dock {
     left: 8px;
     right: 8px;
     bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-    width: auto;
     max-width: none;
     transform: none;
-    border-radius: var(--radius-sm);
   }
 
-  .bottom-bar.toolbar-minimized {
-    transform: translateY(calc(100% + 20px));
+  .bottom-bar {
+    width: 100%;
+    max-width: none;
+    border-radius: var(--radius-sm);
   }
 
   .chart-drawer {
     right: 8px;
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(136px + env(safe-area-inset-bottom, 0px));
     left: 8px;
     width: auto;
   }
 
+  .viewport-container:has(.bottom-bar.toolbar-minimized) .chart-drawer {
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px));
+  }
+
   .trends-drawer {
-    top: 60px;
+    top: 8px;
     right: 8px;
     width: min(380px, calc(100vw - 16px));
   }
 
-  .btn-toggle-toolbar {
-    right: 8px;
-    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  .minimap-panel.open ~ .trends-drawer {
+    top: 132px;
   }
 
   .toast {
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(136px + env(safe-area-inset-bottom, 0px));
     font-size: 12px;
   }
 
@@ -1878,6 +2069,39 @@ kbd {
 
   .cert-grade {
     font-size: 18px;
+  }
+}
+
+/* ==========================================================================
+   Coarse pointer (touch) targets >= 44px
+   ========================================================================== */
+
+@media (pointer: coarse) {
+  .btn,
+  .btn-icon,
+  .btn-icon-action,
+  .btn-brush,
+  .btn-speed,
+  .btn-tool,
+  .btn-toggle-toolbar,
+  .select-scenario,
+  #btn-reset-world,
+  .field-log-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .slider-group input[type='range'],
+  .setting-row input[type='range'] {
+    height: 32px;
+  }
+
+  .chart-drawer {
+    bottom: calc(184px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .viewport-container:has(.bottom-bar.toolbar-minimized) .chart-drawer {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 }
 

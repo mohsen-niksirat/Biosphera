@@ -3,18 +3,27 @@ import assert from 'node:assert/strict';
 import { NeuralNet, DEFAULT_BRAIN_TOPOLOGY } from '../src/brain/NeuralNet.js';
 
 describe('NeuralNet', () => {
-  it('initializes with default topology (9 -> [7] -> 4) and produces bounded outputs', () => {
+  it('initializes with default topology (13 -> [9] -> 4) and produces bounded outputs', () => {
     const net = new NeuralNet();
     assert.deepEqual(net.topology, DEFAULT_BRAIN_TOPOLOGY);
     assert.equal(net.weights.length, 2);
     assert.equal(net.biases.length, 2);
 
-    const out = net.feedForward([0.5, -0.2, 0.8, 0, 1, 0, 0.7, 1, 0.1]);
+    const out = net.feedForward([0.5, -0.2, 0.8, 0, 1, 0, 0.7, 1, 0.1, 0.2, 0.5, 0, 0]);
     assert.equal(out.length, 4);
     for (let i = 0; i < out.length; i++) {
       assert.ok(Number.isFinite(out[i]));
       assert.ok(out[i] >= -1 && out[i] <= 1);
     }
+  });
+
+  it('remains backward-compatible with legacy 9-input serialized networks', () => {
+    const legacy = new NeuralNet({ inputs: 9, hiddens: [7], outputs: 4 });
+    const restored = NeuralNet.deserialize(legacy.serialize());
+    assert.equal(restored.topology.inputs, 9);
+    const out = restored.feedForward(new Array(13).fill(0.25));
+    assert.equal(out.length, 4);
+    assert.ok(out.every((v) => Number.isFinite(v)));
   });
 
   it('is deterministic for identical inputs', () => {

@@ -292,28 +292,32 @@ export class World {
           this.maxGeneration = offspring.generation;
         }
       }
+    }
 
-      if (org.isDead) {
-        this.totalDeaths++;
-        this.deadLifespans.push(org.age);
-        if (this.deadLifespans.length > 100) this.deadLifespans.shift();
+    // Immediate death cleanup for all organisms that died this step (including predation victims)
+    for (let i = this.organisms.length - 1; i >= 0; i--) {
+      const org = this.organisms[i];
+      if (!org.isDead) continue;
 
-        this.addParticleBurst(org.x, org.y, '#fb7185', 8);
-        this.pheromones.deposit(org.x, org.y, 'danger', 1.0);
+      this.totalDeaths++;
+      this.deadLifespans.push(org.age);
+      if (this.deadLifespans.length > 100) this.deadLifespans.shift();
 
-        // Controlled meat drop: prevent food explosions
-        if (this.foods.length < this.maxFoodCap) {
-          const meatCount = org.radius > 16 ? 2 : 1;
-          for (let m = 0; m < meatCount; m++) {
-            const dropX = (org.x + (Math.random() - 0.5) * 15 + this.width) % this.width;
-            const dropY = (org.y + (Math.random() - 0.5) * 15 + this.height) % this.height;
-            this.foods.push(new Food(dropX, dropY, 'meat', 35));
-            this.pheromones.deposit(dropX, dropY, 'food', 0.6);
-          }
+      this.addParticleBurst(org.x, org.y, '#fb7185', 8);
+      this.pheromones.deposit(org.x, org.y, 'danger', 1.0);
+
+      // Controlled meat drop: prevent food explosions
+      if (this.foods.length < this.maxFoodCap) {
+        const meatCount = org.radius > 16 ? 2 : 1;
+        for (let m = 0; m < meatCount; m++) {
+          const dropX = (org.x + (Math.random() - 0.5) * 15 + this.width) % this.width;
+          const dropY = (org.y + (Math.random() - 0.5) * 15 + this.height) % this.height;
+          this.foods.push(new Food(dropX, dropY, 'meat', 35));
+          this.pheromones.deposit(dropX, dropY, 'food', 0.6);
         }
-
-        this.organisms.splice(i, 1);
       }
+
+      this.organisms.splice(i, 1);
     }
 
     for (let i = 0; i < newborns.length; i++) {
@@ -370,7 +374,7 @@ export class World {
     for (const org of this.organisms) {
       org.dna = org.dna.mutate(0.4, 0.6);
       // dna replaced: re-derive energy ceiling and body radius, clamp to ceiling
-      org.maxEnergy = org.dna.reproduceThreshold * 1.35;
+      org.maxEnergy = org.dna.reproduceThreshold * (1.25 + (org.dna.fatReserve ?? 0.2) * 0.5);
       org.energy = Math.min(org.energy, org.maxEnergy);
       org.radius = org.dna.size;
     }

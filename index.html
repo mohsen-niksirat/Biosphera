@@ -247,7 +247,7 @@
             <svg class="icon" aria-hidden="true"><use href="#i-tree"/></svg>
             <span class="btn-label">Lineage</span>
           </button>
-          <button id="btn-toggle-trends" class="btn btn-icon-action" title="Genome evolution trends" aria-label="Toggle evolution trends">
+          <button id="btn-toggle-trends" class="btn btn-icon-action" title="Genome evolution trends" aria-label="Toggle evolution trends" aria-pressed="false" aria-expanded="false">
             <svg class="icon" aria-hidden="true"><use href="#i-dna"/></svg>
             <span class="btn-label">Trends</span>
           </button>
@@ -255,7 +255,7 @@
             <svg class="icon" aria-hidden="true"><use href="#i-map"/></svg>
             <span class="btn-label">Map</span>
           </button>
-          <button id="btn-toggle-chart" class="btn btn-icon-action" title="Toggle Lotka-Volterra ecology chart" aria-label="Toggle ecology chart">
+          <button id="btn-toggle-chart" class="btn btn-icon-action" title="Toggle Lotka-Volterra ecology chart" aria-label="Toggle ecology chart" aria-pressed="false" aria-expanded="false">
             <svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg>
             <span class="btn-label">Dynamics</span>
           </button>
@@ -301,7 +301,7 @@
 
     <!-- Main Viewport Canvas -->
     <main class="viewport-container">
-      <canvas id="sim-canvas"></canvas>
+      <canvas id="sim-canvas" aria-label="Biosphera ecosystem simulation viewport"></canvas>
 
       <!-- Pan & Zoom Guide Overlay -->
       <div class="hint-overlay" aria-hidden="true">
@@ -313,6 +313,17 @@
       <div id="minimap-panel" class="floating-panel minimap-panel" aria-label="World overview map" aria-hidden="true">
         <canvas id="minimap-canvas" width="360" height="270"></canvas>
       </div>
+
+      <!-- Collapsible Live Field Log Ticker -->
+      <section id="field-log" class="floating-panel field-log" aria-label="Live field log">
+        <button id="btn-toggle-field-log" class="field-log-toggle" type="button" aria-expanded="false" aria-controls="field-log-list">
+          <span class="field-log-dot" aria-hidden="true"></span>
+          <span class="field-log-title">Field Log</span>
+          <span id="field-log-latest" class="field-log-latest">Observing biosphere...</span>
+          <svg class="icon icon-sm field-log-chev" aria-hidden="true"><use href="#i-chev-down"/></svg>
+        </button>
+        <ul id="field-log-list" class="field-log-list" hidden></ul>
+      </section>
 
       <!-- Right Floating Inspector (Microscope) -->
       <aside id="inspector-panel" class="floating-panel inspector-panel" style="display: none;" aria-label="Organism inspector"></aside>
@@ -345,14 +356,15 @@
         <canvas id="evo-chart-canvas" width="340" height="110"></canvas>
       </div>
 
-      <!-- Toggle Bottom Toolbar Button (for mobile / clean view) -->
-      <button id="btn-toggle-toolbar" class="btn-toggle-toolbar" title="Toggle Controls" aria-label="Toggle controls">
-        <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chev-down"/></svg>
-        <span class="btn-label">Hide controls</span>
-      </button>
+      <!-- Bottom Dock: Toggle button + Floating Toolbar -->
+      <div id="bottom-dock" class="bottom-dock">
+        <button id="btn-toggle-toolbar" class="btn-toggle-toolbar" title="Toggle Controls" aria-label="Toggle controls" aria-pressed="true">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chev-down"/></svg>
+          <span class="btn-label">Hide controls</span>
+        </button>
 
-      <!-- Bottom Floating Toolbar (Playback & God Mode) -->
-      <nav id="bottom-bar" class="floating-bar bottom-bar" aria-label="Simulation controls">
+        <!-- Bottom Floating Toolbar (Playback & God Mode) -->
+        <nav id="bottom-bar" class="floating-bar bottom-bar" aria-label="Simulation controls">
         <div class="bar-group brush-group" role="group" aria-label="God brush">
           <button class="btn-brush active" data-brush="select" title="Normal cursor & selection" aria-label="Select brush">
             <svg class="icon" aria-hidden="true"><use href="#i-pointer"/></svg>
@@ -428,6 +440,7 @@
           </button>
         </div>
       </nav>
+      </div>
     </main>
 
     <!-- Gene Lab Modal -->
@@ -662,6 +675,24 @@
         </div>
         <div class="modal-footer">
           <button id="btn-submit-dna" class="btn btn-primary">Inject Organism</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Instrument Confirm / Alert / Copy Dialog -->
+    <div id="instrument-dialog" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog modal-sm" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-message">
+        <div class="modal-header">
+          <h3 id="dialog-title">Confirm</h3>
+          <button id="dialog-close" class="btn-icon" aria-label="Close dialog"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <p id="dialog-message" class="modal-desc"></p>
+          <textarea id="dialog-input" class="dialog-input" rows="4" readonly hidden></textarea>
+        </div>
+        <div class="modal-footer">
+          <button id="dialog-cancel" class="btn btn-secondary">Cancel</button>
+          <button id="dialog-confirm" class="btn btn-primary">Confirm</button>
         </div>
       </div>
     </div>

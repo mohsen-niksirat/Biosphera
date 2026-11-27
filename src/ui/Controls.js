@@ -3,7 +3,7 @@
  */
 
 import { DNA } from '../genetics/DNA.js';
-import { setIcon, setLabel, setPressed, openModal, closeModal } from './dom.js';
+import { setIcon, setLabel, setPressed, openModal, closeModal, showConfirm, showAlert } from './dom.js';
 
 export class Controls {
   constructor(world, soundEngine) {
@@ -13,6 +13,7 @@ export class Controls {
     this.onSeasonCycle = null;
     this.onSave = null;
     this.onLoad = null;
+    this.onFieldEvent = null;
     this.bindEvents();
   }
 
@@ -57,11 +58,18 @@ export class Controls {
 
     // Scenario / Preset selector
     const selectScenario = document.getElementById('select-scenario');
-    selectScenario?.addEventListener('change', (e) => {
+    selectScenario?.addEventListener('change', async (e) => {
       const preset = e.target.value;
-      if (confirm(`Switch scenario to "${e.target.options[e.target.selectedIndex].text}"? This will reset the population.`)) {
+      const label = e.target.options[e.target.selectedIndex].text;
+      const confirmed = await showConfirm({
+        title: 'Switch Scenario',
+        message: `Switch scenario to "${label}"? This will reset the current population.`,
+        confirmLabel: 'Switch Scenario',
+        danger: true
+      });
+      if (confirmed) {
         this.world.loadPreset(preset);
-        this.showToast(`Loaded scenario: ${e.target.options[e.target.selectedIndex].text}`);
+        this.showToast(`Loaded scenario: ${label}`);
       } else {
         selectScenario.value = this.world.currentPreset;
       }
@@ -72,8 +80,10 @@ export class Controls {
     const chartDrawer = document.getElementById('chart-drawer');
     btnToggleChart?.addEventListener('click', () => {
       if (chartDrawer) {
-        chartDrawer.classList.toggle('open');
-        btnToggleChart.classList.toggle('active');
+        const isOpen = chartDrawer.classList.toggle('open');
+        btnToggleChart.classList.toggle('active', isOpen);
+        setPressed(btnToggleChart, isOpen);
+        btnToggleChart.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
       }
     });
 
@@ -81,6 +91,7 @@ export class Controls {
     document.getElementById('btn-ice-age')?.addEventListener('click', () => {
       this.world.triggerIceAge();
       this.showToast('Ice age triggered. Plant growth frozen.');
+      this.onFieldEvent?.('Ice age triggered — vegetation frozen.', 'disaster');
     });
 
     document.getElementById('btn-food-bloom')?.addEventListener('click', () => {
@@ -91,11 +102,13 @@ export class Controls {
     document.getElementById('btn-radiation')?.addEventListener('click', () => {
       this.world.triggerRadiationFlare();
       this.showToast('Radiation flare. Rapid mutations triggered.');
+      this.onFieldEvent?.('Radiation flare — mutation spike active.', 'disaster');
     });
 
     document.getElementById('btn-toxic-vent')?.addEventListener('click', () => {
       this.world.triggerToxicBloom();
       this.showToast('New toxic thermal vent formed.');
+      this.onFieldEvent?.('Thermal toxic vent erupted.', 'disaster');
     });
 
     // Water currents toggle
@@ -132,8 +145,14 @@ export class Controls {
       this.showToast('20 diverse genesis organisms injected.');
     });
 
-    document.getElementById('btn-reset-world')?.addEventListener('click', () => {
-      if (confirm('Reset entire ecosystem to initial state?')) {
+    document.getElementById('btn-reset-world')?.addEventListener('click', async () => {
+      const confirmed = await showConfirm({
+        title: 'Reset Ecosystem',
+        message: 'Reset entire ecosystem to initial state? All living lineages will be lost.',
+        confirmLabel: 'Reset World',
+        danger: true
+      });
+      if (confirmed) {
         this.world.clearAll();
         this.showToast('Ecosystem re-seeded.');
       }
@@ -165,7 +184,10 @@ export class Controls {
         closeModal(modal);
         this.showToast('Custom organism imported into biosphere!');
       } else {
-        alert('Invalid DNA string format. Paste a Base64 string exported from Biosphera.');
+        showAlert({
+          title: 'Invalid DNA String',
+          message: 'Invalid DNA string format. Paste a Base64 string exported from Biosphera.'
+        });
       }
     });
   }

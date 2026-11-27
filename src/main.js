@@ -25,7 +25,7 @@ import { EvolutionChart } from './ui/EvolutionChart.js';
 import { Minimap } from './ui/Minimap.js';
 import { WorldSettings } from './ui/WorldSettings.js';
 import { WorldIO } from './engine/WorldIO.js';
-import { setIcon, setLabel, setPressed, setupModalDismissal, isModalOpen, openModal, closeModal } from './ui/dom.js';
+import { setIcon, setLabel, setPressed, setupModalDismissal, isModalOpen, openModal, closeModal, showCopyDialog } from './ui/dom.js';
 
 const SAVE_KEY = 'biosphera_ecosave';
 const AUTOSAVE_KEY = 'biosphera_autosave';
@@ -94,6 +94,7 @@ class BiospheraApp {
     this.achievements.onUnlock = (trophy) => {
       this.soundEngine.playBirth();
       this.controls.showToast(`Milestone unlocked: ${trophy.title}`);
+      this.logFieldEvent(`Milestone: ${trophy.title}`, 'milestone');
       this.updateTrophyBadge();
     };
 
@@ -119,9 +120,12 @@ class BiospheraApp {
         case 'ice_age_end':
           // Survived the full freeze — unlock only when it ends, not when triggered
           this.achievements.unlock('ice_survivor');
+          this.logFieldEvent('Ice age ended — survivors endured.', 'rescue');
           break;
       }
     };
+
+    this.controls.onFieldEvent = (msg, kind) => this.logFieldEvent(msg, kind);
 
     // Scenario switch / full reset wipes the world — drop stale selections and history
     this.world.onReset = () => {
@@ -133,15 +137,23 @@ class BiospheraApp {
       this.chart.reset();
       this.evoChart.reset();
       this.lastSeason = '';
+      this.knownSpecies.clear();
+      this.speciesBootstrapped = false;
+      this.lastLoggedGenMilestone = 1;
+      this.logFieldEvent('Biosphere reset — new genesis seeded.', 'info');
     };
 
-    // Loop state
-    this.lastTime = performance.now();
+    // Loop & Field Log state
+    this.startTime = performance.now();
+    this.lastTime = this.startTime;
     this.frameCount = 0;
-    this.lastFpsUpdate = performance.now();
+    this.lastFpsUpdate = this.startTime;
     this.currentFps = 60;
     this.lastDayPhase = '';
     this.lastSeason = '';
+    this.knownSpecies = new Set();
+    this.speciesBootstrapped = false;
+    this.lastLoggedGenMilestone = 1;
 
     this.isDragging = false;
     this.dragStartX = 0;
@@ -495,7 +507,11 @@ class BiospheraApp {
       navigator.clipboard.writeText(dnaString).then(() => {
         this.controls.showToast('DNA string copied to clipboard.');
       }).catch(() => {
-        prompt('Copy DNA string below:', dnaString);
+        showCopyDialog({
+          title: 'Export Organism DNA',
+          message: 'Clipboard access unavailable. Copy the Base64 DNA string below:',
+          value: dnaString
+        });
       });
     };
 
@@ -554,9 +570,22 @@ class BiospheraApp {
     document.getElementById('btn-toggle-trends')?.addEventListener('click', (e) => {
       const drawer = document.getElementById('trends-drawer');
       if (drawer) {
-        drawer.classList.toggle('open');
-        e.currentTarget.classList.toggle('active');
+        const isOpen = drawer.classList.toggle('open');
+        e.currentTarget.classList.toggle('active', isOpen);
+        setPressed(e.currentTarget, isOpen);
+        e.currentTarget.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
       }
+    });
+
+    // Collapsible Live Field Log toggle
+    const fieldLog = document.getElementById('field-log');
+    const btnFieldLog = document.getElementById('btn-toggle-field-log');
+    const fieldLogList = document.getElementById('field-log-list');
+    btnFieldLog?.addEventListener('click', () => {
+      if (!fieldLog || !fieldLogList) return;
+      const isOpen = fieldLog.classList.toggle('open');
+      fieldLogList.hidden = !isOpen;
+      btnFieldLog.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     });
 
     // Ecosystem Save / Load & Season cycle (delegated via Controls callbacks)
@@ -707,6 +736,36 @@ class BiospheraApp {
     btn.setAttribute('aria-label', `Day/night: ${phase}${locked ? ' (locked)' : ' (automatic)'}`);
   }
 
+  /** Append an emergent biosphere event to the collapsible HUD Field Log. */
+  logFieldEvent(message, kind = 'info') {
+    const latestEl = document.getElementById('field-log-latest');
+    const listEl = document.getElementById('field-log-list');
+    if (latestEl) latestEl.textContent = message;
+    if (!listEl) return;
+
+    const elapsedSec = Math.max(0, Math.floor((performance.now() - this.startTime) / 1000));
+    const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+    const secs = String(elapsedSec % 60).padStart(2, '0');
+
+    const item = document.createElement('li');
+    item.className = `field-log-item kind-${kind}`;
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'field-log-time';
+    timeSpan.textContent = `${mins}:${secs}`;
+
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'field-log-msg';
+    msgSpan.textContent = message;
+
+    item.append(timeSpan, msgSpan);
+    listEl.prepend(item);
+
+    while (listEl.children.length > 30) {
+      listEl.lastElementChild?.remove();
+    }
+  }
+
   /** Shared post-load reset: drop stale selections and history, recenter the view. */
   afterWorldLoaded(message) {
     this.renderer.selectedOrganism = null;
@@ -720,6 +779,10 @@ class BiospheraApp {
     this.updateSeasonButton();
     this.syncToggleButtons();
     this.lastDayPhase = '';
+    this.knownSpecies.clear();
+    this.speciesBootstrapped = false;
+    this.lastLoggedGenMilestone = Math.max(1, Math.floor((this.world.maxGeneration || 1) / 5) * 5);
+    this.logFieldEvent(message, 'info');
     this.controls.showToast(message);
   }
 
@@ -935,13 +998,22 @@ class BiospheraApp {
       this.controls.updateStats(this.world.getStats(this.currentFps));
       this.achievements.checkMilestones(this.world);
       this.records.update(this.world, currentTime);
+      this.soundEngine.updateTelemetry(this.world, this.dayNight);
     }
 
     // Record population history in chart
     this.chart.record(stats, currentTime);
 
     // 1. Simulation Step & Circadian Cycle
+    const hadOrganisms = this.world.organisms.length > 0;
     this.world.update(dt);
+    if (
+      hadOrganisms &&
+      this.world.organisms.length === 15 &&
+      this.world.organisms.every((o) => o.age === 0 && o.generation === 1)
+    ) {
+      this.logFieldEvent('Extinction rescue: 15 genesis organisms seeded.', 'rescue');
+    }
     this.godBrush.update(dt);
     this.dayNight.update(dt);
 
@@ -958,6 +1030,27 @@ class BiospheraApp {
 
     // Species auto-classification (throttled internally)
     this.species.update(this.world, currentTime);
+    if (this.species.species.length > 0) {
+      if (!this.speciesBootstrapped) {
+        for (const s of this.species.species) this.knownSpecies.add(s.name);
+        this.speciesBootstrapped = true;
+      } else {
+        for (const s of this.species.species) {
+          if (!this.knownSpecies.has(s.name)) {
+            this.knownSpecies.add(s.name);
+            this.soundEngine.playSpeciation();
+            this.logFieldEvent(`New species emerged: ${s.name}`, 'species');
+          }
+        }
+      }
+    }
+
+    // Generation milestone logging (every 5 generations)
+    const genMilestone = Math.floor(stats.maxGeneration / 5) * 5;
+    if (genMilestone >= 5 && genMilestone > this.lastLoggedGenMilestone) {
+      this.lastLoggedGenMilestone = genMilestone;
+      this.logFieldEvent(`Generation ${genMilestone} reached.`, 'milestone');
+    }
 
     // Evolution trends sampling
     const orgs = this.world.organisms;

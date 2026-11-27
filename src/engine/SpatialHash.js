@@ -31,36 +31,51 @@ export class SpatialHash {
     cell.push(entity);
   }
 
-  query(x, y, radius) {
-    const minCx = Math.floor((x - radius) / this.cellSize);
-    const maxCx = Math.floor((x + radius) / this.cellSize);
-    const minCy = Math.floor((y - radius) / this.cellSize);
-    const maxCy = Math.floor((y + radius) / this.cellSize);
+  _getAxisCellRanges(pos, radius, worldSize) {
+    if (!Number.isFinite(worldSize)) {
+      return [[
+        Math.floor((pos - radius) / this.cellSize),
+        Math.floor((pos + radius) / this.cellSize)
+      ]];
+    }
 
-    // Toroidal world: when the query box crosses an edge, also scan the
-    // opposite side's cells (shifted by one full grid span). The offsets
-    // produce disjoint cell sets, so no entity is returned twice.
-    const xOffsets = [0];
-    const yOffsets = [0];
-    if (Number.isFinite(this.worldWidth)) {
-      const cols = Math.ceil(this.worldWidth / this.cellSize);
-      if (x - radius < 0) xOffsets.push(cols);
-      if (x + radius > this.worldWidth) xOffsets.push(-cols);
+    const maxCell = Math.floor(worldSize / this.cellSize);
+    if (radius * 2 >= worldSize) {
+      return [[0, maxCell]];
     }
-    if (Number.isFinite(this.worldHeight)) {
-      const rows = Math.ceil(this.worldHeight / this.cellSize);
-      if (y - radius < 0) yOffsets.push(rows);
-      if (y + radius > this.worldHeight) yOffsets.push(-rows);
+
+    const pMin = Math.floor(Math.max(0, pos - radius) / this.cellSize);
+    const pMax = Math.floor(Math.min(worldSize, pos + radius) / this.cellSize);
+
+    if (pos - radius < 0) {
+      const wMin = Math.floor((pos - radius + worldSize) / this.cellSize);
+      const wMax = maxCell;
+      return wMin <= pMax ? [[pMin, wMax]] : [[pMin, pMax], [wMin, wMax]];
     }
+
+    if (pos + radius > worldSize) {
+      const wMin = 0;
+      const wMax = Math.floor((pos + radius - worldSize) / this.cellSize);
+      return wMax >= pMin ? [[wMin, pMax]] : [[wMin, wMax], [pMin, pMax]];
+    }
+
+    return [[pMin, pMax]];
+  }
+
+  query(x, y, radius) {
+    const xRanges = this._getAxisCellRanges(x, radius, this.worldWidth);
+    const yRanges = this._getAxisCellRanges(y, radius, this.worldHeight);
 
     const results = [];
     const rSq = radius * radius;
 
-    for (const ox of xOffsets) {
-      for (const oy of yOffsets) {
+    for (let rx = 0; rx < xRanges.length; rx++) {
+      const [minCx, maxCx] = xRanges[rx];
+      for (let ry = 0; ry < yRanges.length; ry++) {
+        const [minCy, maxCy] = yRanges[ry];
         for (let cx = minCx; cx <= maxCx; cx++) {
           for (let cy = minCy; cy <= maxCy; cy++) {
-            const cell = this.grid.get(this.getKey(cx + ox, cy + oy));
+            const cell = this.grid.get(this.getKey(cx, cy));
             if (!cell) continue;
 
             for (let i = 0; i < cell.length; i++) {

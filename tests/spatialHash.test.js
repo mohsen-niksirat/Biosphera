@@ -50,5 +50,19 @@ describe('SpatialHash', () => {
     assert.equal(res[0].id, 'edge');
   });
 
-  it.todo('wraps correctly when worldWidth is not an exact multiple of cellSize (e.g. 2400 / 70)');
+  it('wraps correctly when worldWidth is not an exact multiple of cellSize (e.g. 2400 / 70)', () => {
+    const hash = new SpatialHash(70, 2400, 1800);
+    const leftEdge = { id: 'left', x: 5, y: 500 };
+    const rightInner = { id: 'rightInner', x: 2375, y: 500 }; // cell 33, dist to x=10 is 35
+    const rightOuter = { id: 'rightOuter', x: 2395, y: 500 }; // cell 34, dist to x=10 is 15
+    hash.insert(leftEdge);
+    hash.insert(rightInner);
+    hash.insert(rightOuter);
+
+    const fromLeft = hash.query(10, 500, 65).map((e) => e.id).sort();
+    assert.deepEqual(fromLeft, ['left', 'rightInner', 'rightOuter']);
+
+    const fromRight = hash.query(2395, 500, 20).map((e) => e.id).sort();
+    assert.deepEqual(fromRight, ['left', 'rightInner', 'rightOuter']);
+  });
 });
